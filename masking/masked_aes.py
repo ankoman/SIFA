@@ -21,7 +21,7 @@ class GF2_2:
     """
     Name:        GF2_2
     A list of two GF2 elements, [x1, x0].
-    x1 is the MSB.
+    x1 is the MSB. Normal basis representation.
     """
     def __init__(self, elem1: GF2 = GF2(), elem0: GF2 = GF2(), fromint: int = None):
         if fromint is None:
@@ -41,62 +41,98 @@ class GF2_2:
         return GF2_2(self.coeff[0] + other.coeff[0], self.coeff[1] + other.coeff[1])
 
     def __mul__(self, other):
-        ### Normal basis
         t = (self.coeff[0] + self.coeff[1]) * (other.coeff[0] + other.coeff[1])
         c1 = t + (self.coeff[0] * other.coeff[0])
         c0 = t + (self.coeff[1] * other.coeff[1])
         return GF2_2(c1, c0)
 
-class GF2_4:
+class GF2_22:
     """
-    Name:        GF2_4
+    Name:        GF2_22
     A list of two GF2_2 elements [x1, x0], x1 and x0 are in GF2_2.
-    x1 is the MSB.
+    X in GF2_2 is represented as x1*alpha^2 + x0*alpha, [alpha^2, alpha] is the normal basis.
+    x1 is the MSB. Normal basis representation.
     """
     def __init__(self, elem1: GF2_2 = GF2_2(), elem0: GF2_2 = GF2_2(), fromint: int = None):
         if fromint is None:
             self.coeff = [elem1, elem0]
         else:
-            assert fromint < 16, 'GF2_4 elemant bigger than 15.'
+            assert fromint < 16, 'GF2_22 elemant bigger than 15.'
             tmp = format(fromint, f'04b')
             x0 = fromint & 0x3
             x1 = fromint >> 2
             self.coeff = [GF2_2(fromint = x1), GF2_2(fromint = x0)]
 
+    def frob(self):
+        ### Frobenius map power to 4.
+        return GF2_22(self[1], self[0])
+
+    def inv(self):
+        print(self)
+        t0 = self[0] + self[1]
+        print(t0)
+        square_scale = GF2_2(t0[0] + t0[1], t0[1])
+        ### square scale semms bad
+        print(square_scale)
+
+        print(self[0]*self[1])
+        power5 = square_scale + self[0]*self[1]
+        print(power5)
+        return power5
+        inv = GF2_2(power5[1], power5[0])
+
+        return GF2_22(inv * self[1], inv * self[0])
+
+    def __getitem__(self, index):
+        return self.coeff[index]
+
     def __repr__(self):
         return str(self.coeff)
 
     def __mul__(self, other):
-        ### Normal basis
         ### Higher (H) is 0, lower (L) is 1.
         t0 = (self.coeff[0] + self.coeff[1]) * (other.coeff[1] + other.coeff[0])
         t1 = GF2_2(t0[1], t0[0] + t0[1])
         c1 = t1 + (self.coeff[0] * other.coeff[0])
         c0 = t1 + (self.coeff[1] * other.coeff[1])
-        return GF2_4(c1, c0)
+        return GF2_22(c1, c0)
 
 
 def main():
 
-    ### Test GF2_2_mul
     print("Test GF2_2_mul, (1, 1) is the unity")
-    for a in range(4):
-        for b in range(4):
-            v_a = GF2_2(fromint = a)
-            v_b = GF2_2(fromint = b)
-            c = v_a * v_b
-            print(f'{a, b}: {v_a} * {v_b} -> {c}')
+    for i in range(4):
+        for j in range(4):
+            a = GF2_2(fromint = i)
+            b = GF2_2(fromint = j)
+            c = a * b
+            print(f'{i, j}: {a} * {b} -> {c}')
 
-    ### Test GF2_4_mul
-    print("Test GF2_4_mul, (1, 1, 1, 1) is the unity?")
-    for a in range(16):
-        for b in range(16):
-            v_a = GF2_4(fromint = a)
-            v_b = GF2_4(fromint = b)
-            c = v_a * v_b
-            print(f'{a, b}: {v_a} * {v_b} -> {c}')
+    print("\nTest GF2_22_mul, (1, 1, 1, 1) is the unity")
+    for i in range(16):
+        for j in range(16):
+            a = GF2_22(fromint = i)
+            b = GF2_22(fromint = j)
+            c = a * b
+            print(f'{i:>2}, {j:>2}: {a} * {b} -> {c}')
 
+    print("\nTest GF2_22 frobenius and mul.")
+    for i in range(16):
+        a = GF2_22(fromint = i)
+        c = a.frob()
+        print(f'{i:>2}^4: {a}^4 -> {c} == {a * a * a * a} ?')
 
+    print("\nTest GF2_22 power to 5, which must be in GF(2_2) (the two elements are the same).")
+    for i in range(16):
+        a = GF2_22(fromint = i)
+        print(f'{a * a * a * a * a}')
+
+    print("\nTest GF2_22_inv")
+    for i in range(16):
+        a = GF2_22(fromint = i)
+        a_inv = a.inv()
+        print(f'{a_inv} == {a * a * a * a * a}')
+        #print(f'{a} * {a_inv} -> {a * a_inv}')
 
 if __name__ == "__main__":
     main()
