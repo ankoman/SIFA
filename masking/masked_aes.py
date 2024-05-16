@@ -1,8 +1,11 @@
 from __future__ import annotations
 
-### Values are represented as a binary array
-### For a = [...], a[0] is the MSB. Higher degree term on the left.
-### Meanehile, a value X is represented as x^3 x^2 x^1 x^0 in the Daemen's work
+### Vector values are represented as a binary array
+### A vector X is represented as x^3 x^2 x^1 x^0 in the Daemen's work
+### In this implementation, a vector is a list. 
+### For X = [x0, x1], X[0] is the LSB. Higher degree term on the right.
+### But for simplisity, vectors are shown in reverse order (higher degree on the left).
+
 class GF2:
     def __init__(self, val: bool = 0):
         assert val in [0, 1], f"GF2 constractor failed"
@@ -20,12 +23,12 @@ class GF2:
 class GF2_2:
     """
     Name:        GF2_2
-    A list of two GF2 elements, [x1, x0].
+    A list of two GF2 elements, [x0, x1].
     x1 is the MSB. Normal basis representation.
     """
-    def __init__(self, elem1: GF2 = GF2(), elem0: GF2 = GF2(), fromint: int = None):
+    def __init__(self, elem0: GF2 = GF2(), elem1: GF2 = GF2(), fromint: int = None):
         if fromint is None:
-            self.coeff = [elem1, elem0]
+            self.coeff = [elem0, elem1]
         else:
             assert fromint < 4, 'GF2_2 elemant bigger than 3.'
             tmp = format(fromint, f'02b')
@@ -41,27 +44,27 @@ class GF2_2:
         return GF2_2(self.coeff[0] + other.coeff[0], self.coeff[1] + other.coeff[1])
 
     def __mul__(self, other):
-        t = (self.coeff[0] + self.coeff[1]) * (other.coeff[0] + other.coeff[1])
-        c1 = t + (self.coeff[0] * other.coeff[0])
-        c0 = t + (self.coeff[1] * other.coeff[1])
-        return GF2_2(c1, c0)
+        t = (self.coeff[1] + self.coeff[0]) * (other.coeff[1] + other.coeff[0])
+        c1 = t + (self.coeff[1] * other.coeff[1])
+        c0 = t + (self.coeff[0] * other.coeff[0])
+        return GF2_2(c0, c1)
 
 class GF2_22:
     """
     Name:        GF2_22
-    A list of two GF2_2 elements [x1, x0], x1 and x0 are in GF2_2.
-    X in GF2_2 is represented as x1*alpha^2 + x0*alpha, [alpha^2, alpha] is the normal basis.
+    A list of two GF2_2 elements [x0, x1], x1 and x0 are in GF2_2.
+    X in GF2_2 is represented as x0*alpha + x1*alpha^2, [alpha, alpha^2] is the normal basis.
     x1 is the MSB. Normal basis representation.
     """
-    def __init__(self, elem1: GF2_2 = GF2_2(), elem0: GF2_2 = GF2_2(), fromint: int = None):
+    def __init__(self, elem0: GF2_2 = GF2_2(), elem1: GF2_2 = GF2_2(), fromint: int = None):
         if fromint is None:
-            self.coeff = [elem1, elem0]
+            self.coeff = [elem0, elem1]
         else:
             assert fromint < 16, 'GF2_22 elemant bigger than 15.'
             tmp = format(fromint, f'04b')
             x0 = fromint & 0x3
             x1 = fromint >> 2
-            self.coeff = [GF2_2(fromint = x1), GF2_2(fromint = x0)]
+            self.coeff = [GF2_2(fromint = x0), GF2_2(fromint = x1)]
 
     def frob(self):
         ### Frobenius map power to 4.
@@ -71,7 +74,7 @@ class GF2_22:
         print(self)
         t0 = self[0] + self[1]
         print(t0)
-        square_scale = GF2_2(t0[0] + t0[1], t0[1])
+        square_scale = GF2_2(t0[1], t0[0] + t0[1])
         ### square scale semms bad
         print(square_scale)
 
@@ -90,12 +93,12 @@ class GF2_22:
         return str(self.coeff)
 
     def __mul__(self, other):
-        ### Higher (H) is 0, lower (L) is 1.
-        t0 = (self.coeff[0] + self.coeff[1]) * (other.coeff[1] + other.coeff[0])
-        t1 = GF2_2(t0[1], t0[0] + t0[1])
-        c1 = t1 + (self.coeff[0] * other.coeff[0])
-        c0 = t1 + (self.coeff[1] * other.coeff[1])
-        return GF2_22(c1, c0)
+        ### Higher (H) is 1, lower (L) is 0.
+        t0 = (self.coeff[1] + self.coeff[0]) * (other.coeff[0] + other.coeff[1])
+        t1 = GF2_2(t0[1], t0[1] + t0[0])
+        c1 = t1 + (self.coeff[1] * other.coeff[1])
+        c0 = t1 + (self.coeff[0] * other.coeff[0])
+        return GF2_22(c0, c1)
 
 
 def main():
