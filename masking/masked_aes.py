@@ -52,12 +52,12 @@ class GF2_2:
         return str(self.coeff)
 
     def __add__(self, other):
-        return GF2_2(self.coeff[0] + other.coeff[0], self.coeff[1] + other.coeff[1])
+        return GF2_2(self[0] + other[0], self[1] + other[1])
 
     def __mul__(self, other):
-        t = (self.coeff[1] + self.coeff[0]) * (other.coeff[1] + other.coeff[0])
-        c1 = t + (self.coeff[1] * other.coeff[1])
-        c0 = t + (self.coeff[0] * other.coeff[0])
+        t = (self[1] + self[0]) * (other[1] + other[0])
+        c1 = t + (self[1] * other[1])
+        c0 = t + (self[0] * other[0])
         return GF2_2(c0, c1)
 
 class GF2_22:
@@ -82,13 +82,21 @@ class GF2_22:
         return GF2_22(self[1], self[0])
 
     def sqr(self):
-        scale = self[1].scale()
-        return GF2_22(scale, self[0] + self[1] + scale)
+        t0 = (self[1] + self[0]).sqr()
+        t1 = t0.scale()
+        c1 = t1 + self[1].sqr()
+        c0 = t1 + self[0].sqr()
+        return GF2_22(c0, c1)
 
     def scale(self):
         ### times alpha^2beta
         t0 = self[1] + self[0]
-        return GF2_22(t0 + self[0].scale2(), t0)
+        t1 = t0.scale()
+        c0 = self[0] + t1
+        c1 = t1
+        c0 = c0.scale2()
+        c1 = c1.scale2()
+        return GF2_22(c0, c1)
 
     def inv(self):
         t0 = self[0] + self[1]
@@ -96,7 +104,6 @@ class GF2_22:
         square_scale = t0.sqr().scale()
         power5 = square_scale + self[0]*self[1]
         inv = power5.sqr()
-
         return GF2_22(inv * self[1], inv * self[0])
 
     def __getitem__(self, index):
@@ -106,14 +113,14 @@ class GF2_22:
         return str(self.coeff)
 
     def __add__(self, other):
-        return GF2_22(self.coeff[0] + other.coeff[0], self.coeff[1] + other.coeff[1])
+        return GF2_22(self[0] + other[0], self[1] + other[1])
 
     def __mul__(self, other):
         ### Higher (H) is 1, lower (L) is 0.
-        t0 = (self.coeff[1] + self.coeff[0]) * (other.coeff[0] + other.coeff[1])
+        t0 = (self[1] + self[0]) * (other[0] + other[1])
         t1 = t0.scale()
-        c1 = t1 + (self.coeff[1] * other.coeff[1])
-        c0 = t1 + (self.coeff[0] * other.coeff[0])
+        c1 = t1 + (self[1] * other[1])
+        c0 = t1 + (self[0] * other[0])
         return GF2_22(c0, c1)
 
 class GF2_222:
@@ -137,15 +144,28 @@ class GF2_222:
         t0 = self[0] + self[1]
         square_scale = t0.sqr().scale()
         power17 = square_scale + self[0]*self[1]
-        #inv = power17.inv()
-        return power17
-        #return GF2_22(inv * self[1], inv * self[0])
+        inv = power17.inv()
+        return GF2_222(inv * self[1], inv * self[0])
+
+    def inv_flt(self):
+        ### Fermat's little theorem inversion
+        a = self
+        for i in range(256 - 2):
+            a = a * self
+        return a
 
     def __getitem__(self, index):
         return self.coeff[index]
 
     def __repr__(self):
         return str(self.coeff)
+
+    def __mul__(self, other):
+        t0 = (self[1] + self[0]) * (other[0] + other[1])
+        t1 = t0.scale()
+        c1 = t1 + (self[1] * other[1])
+        c0 = t1 + (self[0] * other[0])
+        return GF2_22(c0, c1)
 
 def main():
 
@@ -182,13 +202,12 @@ def main():
         a_inv = a.inv()
         print(f'{a} * {a_inv} -> {a * a_inv}')
 
-    print("\nTest GF2_222_inv")
+    print("\nTest GF2_222_inv. (1, 1, 1, 1, 1, 1, 1, 1) is the unity")
     for i in range(256):
         a = GF2_222(fromint = i)
         a_inv = a.inv()
-        print(f'{a_inv} == {a * a * a * a * a * a * a * a * a * a * a * a * a * a * a * a * a} ?')
-
-        #print(f'{a} * {a_inv} -> {a * a_inv}')
+        #print(f'{power17} == {a * a * a * a * a * a * a * a * a * a * a * a * a * a * a * a * a} ?')
+        print(f'{a} * {a_inv} -> {a * a_inv}')
 
 if __name__ == "__main__":
     main()
