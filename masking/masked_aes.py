@@ -23,7 +23,7 @@ class GF2:
 class GF2_2:
     """
     Name:        GF2_2
-    A list of two GF2 elements, [x0, x1].
+    A list of two GF2 elements, [x0, x1]. [alpha, alpha^2] is the basis
     x1 is the MSB. Normal basis representation.
     """
     def __init__(self, elem0: GF2 = GF2(), elem1: GF2 = GF2(), fromint: int = None):
@@ -36,6 +36,14 @@ class GF2_2:
 
     def sqr(self):
         return GF2_2(self[1], self[0])
+
+    def scale(self):
+        ### times alpha
+        return GF2_2(self[1], self[1] + self[0])
+
+    def scale2(self):
+        ### times alpha^2
+        return GF2_2(self[1] + self[0], self[0])
 
     def __getitem__(self, index):
         return self.coeff[index]
@@ -56,7 +64,7 @@ class GF2_22:
     """
     Name:        GF2_22
     A list of two GF2_2 elements [x0, x1], x1 and x0 are in GF2_2.
-    X in GF2_2 is represented as x0*alpha + x1*alpha^2, [alpha, alpha^2] is the normal basis.
+    X in GF2_22 is represented as x0*beta + x1*beta^4, [beta, beta^4] is the normal basis.
     x1 is the MSB. Normal basis representation.
     """
     def __init__(self, elem0: GF2_2 = GF2_2(), elem1: GF2_2 = GF2_2(), fromint: int = None):
@@ -73,9 +81,19 @@ class GF2_22:
         ### Frobenius map power to 4.
         return GF2_22(self[1], self[0])
 
+    def sqr(self):
+        scale = self[1].scale()
+        return GF2_22(scale, self[0] + self[1] + scale)
+
+    def scale(self):
+        ### times alpha^2beta
+        t0 = self[1] + self[0]
+        return GF2_22(t0 + self[0].scale2(), t0)
+
     def inv(self):
         t0 = self[0] + self[1]
-        square_scale = GF2_2(t0[0], t0[0] + t0[1])
+        #square_scale = GF2_2(t0[0], t0[0] + t0[1])
+        square_scale = t0.sqr().scale()
         power5 = square_scale + self[0]*self[1]
         inv = power5.sqr()
 
@@ -87,14 +105,47 @@ class GF2_22:
     def __repr__(self):
         return str(self.coeff)
 
+    def __add__(self, other):
+        return GF2_22(self.coeff[0] + other.coeff[0], self.coeff[1] + other.coeff[1])
+
     def __mul__(self, other):
         ### Higher (H) is 1, lower (L) is 0.
         t0 = (self.coeff[1] + self.coeff[0]) * (other.coeff[0] + other.coeff[1])
-        t1 = GF2_2(t0[1], t0[1] + t0[0])
+        t1 = t0.scale()
         c1 = t1 + (self.coeff[1] * other.coeff[1])
         c0 = t1 + (self.coeff[0] * other.coeff[0])
         return GF2_22(c0, c1)
 
+class GF2_222:
+    """
+    Name:        GF2_222
+    A list of two GF2_22 elements [x0, x1], x1 and x0 are in GF2_22.
+    X in GF2_222 is represented as x0*gamma + x1*gamma^16, [gamma, gamma^16] is the normal basis.
+    x1 is the MSB. Normal basis representation.
+    """
+    def __init__(self, elem0: GF2_22 = GF2_22(), elem1: GF2_22 = GF2_22(), fromint: int = None):
+        if fromint is None:
+            self.coeff = [elem0, elem1]
+        else:
+            assert fromint < 256, 'GF2_222 elemant bigger than 15.'
+            tmp = format(fromint, f'08b')
+            x0 = fromint & 0xf
+            x1 = fromint >> 4
+            self.coeff = [GF2_22(fromint = x0), GF2_22(fromint = x1)]
+
+    def inv(self):
+        t0 = self[0] + self[1]
+        square_scale = t0.sqr().scale()
+        power17 = square_scale + self[0]*self[1]
+        #inv = power17.inv()
+        return power17
+        #return GF2_22(inv * self[1], inv * self[0])
+
+    def __getitem__(self, index):
+        return self.coeff[index]
+
+    def __repr__(self):
+        return str(self.coeff)
 
 def main():
 
@@ -130,6 +181,14 @@ def main():
         a = GF2_22(fromint = i)
         a_inv = a.inv()
         print(f'{a} * {a_inv} -> {a * a_inv}')
+
+    print("\nTest GF2_222_inv")
+    for i in range(256):
+        a = GF2_222(fromint = i)
+        a_inv = a.inv()
+        print(f'{a_inv} == {a * a * a * a * a * a * a * a * a * a * a * a * a * a * a * a * a} ?')
+
+        #print(f'{a} * {a_inv} -> {a * a_inv}')
 
 if __name__ == "__main__":
     main()
