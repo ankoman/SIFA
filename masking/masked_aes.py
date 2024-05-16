@@ -34,6 +34,9 @@ class GF2_2:
             tmp = format(fromint, f'02b')
             self.coeff = [GF2(int(x)) for x in list(tmp)]
 
+    def sqr(self):
+        return GF2_2(self[1], self[0])
+
     def __getitem__(self, index):
         return self.coeff[index]
 
@@ -71,18 +74,10 @@ class GF2_22:
         return GF2_22(self[1], self[0])
 
     def inv(self):
-        print(self)
         t0 = self[0] + self[1]
-        print(t0)
-        square_scale = GF2_2(t0[1], t0[0] + t0[1])
-        ### square scale semms bad
-        print(square_scale)
-
-        print(self[0]*self[1])
+        square_scale = GF2_2(t0[0], t0[0] + t0[1])
         power5 = square_scale + self[0]*self[1]
-        print(power5)
-        return power5
-        inv = GF2_2(power5[1], power5[0])
+        inv = power5.sqr()
 
         return GF2_22(inv * self[1], inv * self[0])
 
@@ -134,8 +129,7 @@ def main():
     for i in range(16):
         a = GF2_22(fromint = i)
         a_inv = a.inv()
-        print(f'{a_inv} == {a * a * a * a * a}')
-        #print(f'{a} * {a_inv} -> {a * a_inv}')
+        print(f'{a} * {a_inv} -> {a * a_inv}')
 
 if __name__ == "__main__":
     main()
