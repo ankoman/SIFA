@@ -168,6 +168,15 @@ class GF2_222:
         c0 = t1 + (self[0] * other[0])
         return GF2_22(c0, c1)
 
+def matReduc(mat):
+    reduced = []
+    for row in mat:
+        r = []
+        for elem in row:
+            r.append(elem % 2)
+        reduced.append(r)
+    return np.array(reduced)
+
 def main():
 
     print("Test GF2_2_mul, (1, 1) is the unity")
@@ -229,7 +238,8 @@ def main():
         [0,1,1,1,1,1,0,0],
         [0,0,1,1,1,1,1,0],
         [0,0,0,1,1,1,1,1]])
-    print(A*X)
-    print(X*A)
+        
+    print(matReduc(A@X))
+    print(matReduc(X@A))
 if __name__ == "__main__":
     main()
