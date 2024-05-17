@@ -1,4 +1,5 @@
 from __future__ import annotations
+import numpy as np
 
 ### Vector values are represented as a binary array
 ### A vector X is represented as x^3 x^2 x^1 x^0 in the Daemen's work
@@ -209,5 +210,26 @@ def main():
         #print(f'{power17} == {a * a * a * a * a * a * a * a * a * a * a * a * a * a * a * a * a} ?')
         print(f'{a} * {a_inv} -> {a * a_inv}')
 
+    X = np.array([
+        [0,0,0,1,0,0,1,0],
+        [1,1,1,0,1,0,1,1],
+        [1,1,1,0,1,1,0,1],
+        [0,1,0,0,0,0,1,0],
+        [0,1,1,1,1,1,1,0],
+        [1,0,1,1,0,0,1,0],
+        [0,0,1,0,0,0,1,0],
+        [0,0,0,0,0,1,0,0]])
+
+    A = np.array([
+        [1,0,0,0,1,1,1,1],
+        [1,1,0,0,0,1,1,1],
+        [1,1,1,0,0,0,1,1],
+        [1,1,1,1,0,0,0,1],
+        [1,1,1,1,1,0,0,0],
+        [0,1,1,1,1,1,0,0],
+        [0,0,1,1,1,1,1,0],
+        [0,0,0,1,1,1,1,1]])
+    print(A*X)
+    print(X*A)
 if __name__ == "__main__":
     main()
