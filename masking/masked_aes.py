@@ -93,13 +93,19 @@ class GF2_22:
         return GF2_22(c0, c1)
 
     def scale(self):
-        ### times alpha^2beta
+        # ### times alpha^2beta for Nogami's construction
+        # t0 = self[1] + self[0]
+        # t1 = t0.scale()
+        # c0 = self[0] + t1
+        # c1 = t1
+        # c0 = c0.scale2()
+        # c1 = c1.scale2()
+
+        ### times N^Z for Canright's construction
         t0 = self[1] + self[0]
-        t1 = t0.scale()
-        c0 = self[0] + t1
-        c1 = t1
-        c0 = c0.scale2()
-        c1 = c1.scale2()
+        c0 = self[0].scale2() + self[1]
+        c1 = t0
+
         return GF2_22(c0, c1)
 
     def inv(self):
@@ -154,7 +160,7 @@ class GF2_222:
     def inv_flt(self):
         ### Fermat's little theorem inversion
         a = self
-        for i in range(256 - 2):
+        for i in range(256 - 3):
             a = a * self
         return a
 
@@ -164,12 +170,19 @@ class GF2_222:
     def __repr__(self):
         return str(self.coeff)
 
+    def __add__(self, other):
+        return GF2_222(self[0] + other[0], self[1] + other[1])
+
     def __mul__(self, other):
         t0 = (self[1] + self[0]) * (other[0] + other[1])
         t1 = t0.scale()
         c1 = t1 + (self[1] * other[1])
         c0 = t1 + (self[0] * other[0])
-        return GF2_22(c0, c1)
+        return GF2_222(c0, c1)
+
+    def toBinArray(self):
+        return [self[0][0][0].val, self[0][0][1].val, self[0][1][0].val, self[0][1][1].val, \
+                self[1][0][0].val, self[1][0][1].val, self[1][1][0].val, self[1][1][1].val]
 
 class GF2_8:
     """
@@ -178,7 +191,8 @@ class GF2_8:
     X in GF2_8 is represented as x0 + x1*A + x2*A^2,..., x7*A^7, [1, A, A^2, ..., A^7] is the polynomial basis.
     x7 is the MSB. Polynomial basis representation.
     """
-    def __init__(self, elem0: GF2 = GF2(), elem1: GF2 = GF2(), elem2: GF2 = GF2(), elem3: GF2 = GF2(), elem4: GF2 = GF2(), elem5: GF2 = GF2(), elem6: GF2 = GF2(), elem7: GF2 = GF2(), fromint: int = None):
+    def __init__(self, elem0: GF2 = GF2(), elem1: GF2 = GF2(), elem2: GF2 = GF2(), elem3: GF2 = GF2(), \
+                elem4: GF2 = GF2(), elem5: GF2 = GF2(), elem6: GF2 = GF2(), elem7: GF2 = GF2(), fromint: int = None):
         if fromint is None:
             self.coeff = [elem0, elem1, elem2, elem3, elem4, elem5, elem6, elem7]
         else:
@@ -219,8 +233,19 @@ class GF2_8:
         
         return GF2_8(t[0], t[1], t[2], t[3], t[4], t[5], t[6], t[7])
 
+    def inv_flt(self):
+        ### Fermat's little theorem inversion
+        a = self
+        for i in range(256 - 3):
+            a = a * self
+        return a
+
     def toInt(self):
         return int("".join(list(reversed(list(map(str, self.coeff))))), 2)
+        
+    def toBinArray(self):
+        return [self[0].val, self[1].val, self[2].val, self[3].val, \
+                self[4].val, self[5].val, self[6].val, self[7].val]   
 
 def matReduc(mat):
     reduced = []
@@ -229,6 +254,12 @@ def matReduc(mat):
         for elem in row:
             r.append(int(elem % 2))
         reduced.append(r)
+    return np.array(reduced)
+
+def vecReduc(vec):
+    reduced = []
+    for elem in vec:
+        reduced.append(int(elem % 2))
     return np.array(reduced)
 
 def main():
@@ -272,38 +303,83 @@ def main():
         a_inv = a.inv()
         #print(f'{power17} == {a * a * a * a * a * a * a * a * a * a * a * a * a * a * a * a * a} ?')
         print(f'{a} * {a_inv} -> {a * a_inv}')
+        #print(f'{a.inv_flt()} == {a_inv} ?')
 
-    ### Normal bases GF(2_222) to polynomial basis GF(2_8)
+    # ### Normal bases GF(2_222) to polynomial basis GF(2_8). Upper is the MSB
+    # N2P = np.array([
+    #     [0,0,0,1,0,0,1,0],
+    #     [1,1,1,0,1,0,1,1],
+    #     [1,1,1,0,1,1,0,1],
+    #     [0,1,0,0,0,0,1,0],
+    #     [0,1,1,1,1,1,1,0],
+    #     [1,0,1,1,0,0,1,0],
+    #     [0,0,1,0,0,0,1,0],
+    #     [0,0,0,0,0,1,0,0]])
+
+    # ### AES Affine transform. Upper is the MSB
+    # Affine = np.array([
+    #     [1,1,1,1,1,0,0,0],
+    #     [0,1,1,1,1,1,0,0],
+    #     [0,0,1,1,1,1,1,0],
+    #     [0,0,0,1,1,1,1,1],
+    #     [1,0,0,0,1,1,1,1],
+    #     [1,1,0,0,0,1,1,1],
+    #     [1,1,1,0,0,0,1,1],
+    #     [1,1,1,1,0,0,0,1]])
+
+    ### Normal bases GF(2_222) to polynomial basis GF(2_8). Lower is the MSB
     N2P = np.array([
-        [0,0,0,1,0,0,1,0],
-        [1,1,1,0,1,0,1,1],
-        [1,1,1,0,1,1,0,1],
-        [0,1,0,0,0,0,1,0],
+        [0,0,1,0,0,0,0,0],
+        [0,1,0,0,0,1,0,0],
+        [0,1,0,0,1,1,0,1],
         [0,1,1,1,1,1,1,0],
-        [1,0,1,1,0,0,1,0],
-        [0,0,1,0,0,0,1,0],
-        [0,0,0,0,0,1,0,0]])
-    
-    P2N = matReduc(np.linalg.inv(N2P))
+        [0,1,0,0,0,0,1,0],
+        [1,0,1,1,0,1,1,1],
+        [1,1,0,1,0,1,1,1],
+        [0,1,0,0,1,0,0,0]
+        ])
 
+    ### AES Affine transform. Lower is the MSB
     Affine = np.array([
-        [1,1,1,1,1,0,0,0],
-        [0,1,1,1,1,1,0,0],
-        [0,0,1,1,1,1,1,0],
-        [0,0,0,1,1,1,1,1],
         [1,0,0,0,1,1,1,1],
         [1,1,0,0,0,1,1,1],
         [1,1,1,0,0,0,1,1],
-        [1,1,1,1,0,0,0,1]])
-        
+        [1,1,1,1,0,0,0,1],
+        [1,1,1,1,1,0,0,0],
+        [0,1,1,1,1,1,0,0],
+        [0,0,1,1,1,1,1,0],
+        [0,0,0,1,1,1,1,1]])
+
+    P2N = matReduc(np.linalg.inv(N2P))
     N2PAffine = matReduc(Affine@N2P)
+    print(P2N)
 
     ### Base tranform vectors
     y = GF2_8(fromint = 0xff)
     z = GF2_8(fromint = 0x5c)
     w = GF2_8(fromint = 0xbd)
+    N = GF2_8(fromint = 0xbc)
 
-    print(hex((y*z*w).toInt()))
+    print(hex((z*z*z*z*z).toInt()))
+
+    ### AES Sbox
+    sbox_in = GF2_8(fromint = 0x2)
+    print(hex((sbox_in * sbox_in).toInt()))
+    print(f'PB: {sbox_in}')
+    sbox_in = sbox_in.toBinArray()
+    print(sbox_in)
+    a = vecReduc(P2N@sbox_in)
+    print(f'NB: {a}')
+    b = GF2_222(GF2_22(GF2_2(GF2(a[0]), GF2(a[1])), GF2_2(GF2(a[2]), GF2(a[3]))), GF2_22(GF2_2(GF2(a[4]), GF2(a[5])), GF2_2(GF2(a[6]), GF2(a[7]))))
+    print(b)
+    c = b*b
+    d = c.toBinArray()
+    e = vecReduc(N2P@d)
+    f = GF2_8(e[0],e[1],e[2],e[3],e[4],e[5],e[6],e[7])
+    g = f.toInt()
+    print(hex(g))
+    sbox_out = g ^ 0x63
+    print(hex(sbox_out))
 
 if __name__ == "__main__":
     main()
