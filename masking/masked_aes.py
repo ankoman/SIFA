@@ -87,7 +87,7 @@ class GF2_22:
 
     def sqr(self):
         t0 = (self[1] + self[0]).sqr()
-        t1 = t0.scale()
+        t1 = t0.scale2()
         c1 = t1 + self[1].sqr()
         c0 = t1 + self[0].sqr()
         return GF2_22(c0, c1)
@@ -101,9 +101,9 @@ class GF2_22:
         # c0 = c0.scale2()
         # c1 = c1.scale2()
 
-        ### times N^Z for Canright's construction
+        ### times N^2Z for Canright's construction
         t0 = self[1] + self[0]
-        c0 = self[0].scale2() + self[1]
+        c0 = self[0].scale() + t0
         c1 = t0
 
         return GF2_22(c0, c1)
@@ -111,7 +111,7 @@ class GF2_22:
     def inv(self):
         t0 = self[0] + self[1]
         #square_scale = GF2_2(t0[0], t0[0] + t0[1])
-        square_scale = t0.sqr().scale()
+        square_scale = t0.sqr().scale2()
         power5 = square_scale + self[0]*self[1]
         inv = power5.sqr()
         return GF2_22(inv * self[1], inv * self[0])
@@ -128,7 +128,7 @@ class GF2_22:
     def __mul__(self, other):
         ### Higher (H) is 1, lower (L) is 0.
         t0 = (self[1] + self[0]) * (other[0] + other[1])
-        t1 = t0.scale()
+        t1 = t0.scale2()
         c1 = t1 + (self[1] * other[1])
         c0 = t1 + (self[0] * other[0])
         return GF2_22(c0, c1)
@@ -352,7 +352,6 @@ def main():
 
     P2N = matReduc(np.linalg.inv(N2P))
     N2PAffine = matReduc(Affine@N2P)
-    print(P2N)
 
     ### Base tranform vectors
     y = GF2_8(fromint = 0xff)
@@ -360,26 +359,25 @@ def main():
     w = GF2_8(fromint = 0xbd)
     N = GF2_8(fromint = 0xbc)
 
-    print(hex((z*z*z*z*z).toInt()))
+    #print(hex((y*z*w).toInt()))
 
     ### AES Sbox
-    sbox_in = GF2_8(fromint = 0x2)
-    print(hex((sbox_in * sbox_in).toInt()))
-    print(f'PB: {sbox_in}')
-    sbox_in = sbox_in.toBinArray()
-    print(sbox_in)
-    a = vecReduc(P2N@sbox_in)
-    print(f'NB: {a}')
-    b = GF2_222(GF2_22(GF2_2(GF2(a[0]), GF2(a[1])), GF2_2(GF2(a[2]), GF2(a[3]))), GF2_22(GF2_2(GF2(a[4]), GF2(a[5])), GF2_2(GF2(a[6]), GF2(a[7]))))
-    print(b)
-    c = b*b
-    d = c.toBinArray()
-    e = vecReduc(N2P@d)
-    f = GF2_8(e[0],e[1],e[2],e[3],e[4],e[5],e[6],e[7])
-    g = f.toInt()
-    print(hex(g))
-    sbox_out = g ^ 0x63
-    print(hex(sbox_out))
+    print("\nTest AES Sbox.")
+    for i in range(16):
+        for j in range(16):
+            sbox_in = i*16+j
+            vec_sbox_in = GF2_8(fromint = sbox_in)
+            vec_sbox_in = vec_sbox_in.toBinArray()
+            a = vecReduc(P2N@vec_sbox_in)
+            b = GF2_222(GF2_22(GF2_2(GF2(a[0]), GF2(a[1])), GF2_2(GF2(a[2]), GF2(a[3]))), GF2_22(GF2_2(GF2(a[4]), GF2(a[5])), GF2_2(GF2(a[6]), GF2(a[7]))))
+            c = b.inv()
+            d = c.toBinArray()
+            e = vecReduc(N2PAffine@d)
+            f = GF2_8(e[0],e[1],e[2],e[3],e[4],e[5],e[6],e[7])
+            g = f.toInt()
+            sbox_out = g ^ 0x63
+            print(f'0x{sbox_out:02x}, ', end = '')
+        print()
 
 if __name__ == "__main__":
     main()
