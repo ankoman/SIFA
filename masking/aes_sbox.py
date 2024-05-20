@@ -7,6 +7,22 @@ import numpy as np
 ### For X = [x0, x1], X[0] is the LSB. Higher degree term on the right.
 ### But for simplisity, vectors are shown in reverse order (higher degree on the left).
 
+def matReduc(mat):
+    reduced = []
+    for row in mat:
+        r = []
+        for elem in row:
+            r.append(int(elem % 2))
+        reduced.append(r)
+    return np.array(reduced)
+
+def vecReduc(vec):
+    reduced = []
+    for elem in vec:
+        reduced.append(int(elem % 2))
+    return np.array(reduced)
+
+
 class AES_map:
     # ### Normal bases GF(2_222) to polynomial basis GF(2_8). Upper is the MSB
     # N2P = np.array([
@@ -56,6 +72,18 @@ class AES_map:
     P2N = matReduc(np.linalg.inv(N2P))
     N2PAffine = matReduc(Affine@N2P)
 
+    def to_GF2_222(x: GF2_8) -> GF2_222:
+        ### Base transform.
+        binArray = x.toBinArray()
+        a = vecReduc(AES_map.P2N@binArray)
+        return GF2_222(GF2_22(GF2_2(GF2(a[0]), GF2(a[1])), GF2_2(GF2(a[2]), GF2(a[3]))), GF2_22(GF2_2(GF2(a[4]), GF2(a[5])), GF2_2(GF2(a[6]), GF2(a[7]))))
+
+    def to_GF2_8_A(x: GF2_222) -> GF2_8:
+        ### Base transform with Affine transform.
+        binArray = x.toBinArray()
+        e = vecReduc(AES_map.N2PAffine@binArray)
+        e = e ^ [1,1,0,0,0,1,1,0]
+        return GF2_8(e[0],e[1],e[2],e[3],e[4],e[5],e[6],e[7])
 
 class GF2:
     def __init__(self, val: bool = 0):
@@ -297,20 +325,6 @@ class GF2_8:
         return [self[0].val, self[1].val, self[2].val, self[3].val, \
                 self[4].val, self[5].val, self[6].val, self[7].val]   
 
-def matReduc(mat):
-    reduced = []
-    for row in mat:
-        r = []
-        for elem in row:
-            r.append(int(elem % 2))
-        reduced.append(r)
-    return np.array(reduced)
-
-def vecReduc(vec):
-    reduced = []
-    for elem in vec:
-        reduced.append(int(elem % 2))
-    return np.array(reduced)
 
 def main():
 
@@ -368,16 +382,11 @@ def main():
     for i in range(16):
         for j in range(16):
             sbox_in = i*16+j
-            vec_sbox_in = GF2_8(fromint = sbox_in)
-            vec_sbox_in = vec_sbox_in.toBinArray()
-            a = vecReduc(P2N@vec_sbox_in)
-            b = GF2_222(GF2_22(GF2_2(GF2(a[0]), GF2(a[1])), GF2_2(GF2(a[2]), GF2(a[3]))), GF2_22(GF2_2(GF2(a[4]), GF2(a[5])), GF2_2(GF2(a[6]), GF2(a[7]))))
-            c = b.inv()
-            d = c.toBinArray()
-            e = vecReduc(N2PAffine@d)
-            f = GF2_8(e[0],e[1],e[2],e[3],e[4],e[5],e[6],e[7])
-            g = f.toInt()
-            sbox_out = g ^ 0x63
+            sin2_8 = GF2_8(fromint = sbox_in)
+            sin2_222 = AES_map.to_GF2_222(sin2_8)
+            inv = sin2_222.inv()
+            sout2_8 = AES_map.to_GF2_8_A(inv)
+            sbox_out = sout2_8.toInt()
             print(f'0x{sbox_out:02x}, ', end = '')
         print()
 
