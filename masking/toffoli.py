@@ -1,4 +1,5 @@
 import random
+from aes_sbox import GF2_22, GF2_2
 
 def toffoli(a: bool, b: bool, c: bool):
     return a ^ (b & c), b, c
@@ -8,6 +9,16 @@ def masked_toffoli(a0: bool, a1: bool, b0: bool, b1: bool, c0: bool, c1: bool):
     a0, b0, c0 = toffoli(a0, b0, c0)
     a1, b1, c1 = toffoli(a1, b1, c1)
     a1, b1, c0 = toffoli(a1, b1, c0)
+    return a0, a1, b0, b1, c0, c1
+
+def pT_4(a: GF2_22, b: GF2_22, c: GF2_22) -> [GF2_22]:
+    return a + (b * c), b, c
+
+def pTS_4(a0: GF2_22, a1: GF2_22, b0: GF2_22, b1: GF2_22, c0: GF2_22, c1: GF2_22):
+    a0, b0, c1 = pT_4(a0, b0, c1)
+    a0, b0, c0 = pT_4(a0, b0, c0)
+    a1, b1, c1 = pT_4(a1, b1, c1)
+    a1, b1, c0 = pT_4(a1, b1, c0)
     return a0, a1, b0, b1, c0, c1
 
 
