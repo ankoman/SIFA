@@ -7,6 +7,56 @@ import numpy as np
 ### For X = [x0, x1], X[0] is the LSB. Higher degree term on the right.
 ### But for simplisity, vectors are shown in reverse order (higher degree on the left).
 
+class AES_map:
+    # ### Normal bases GF(2_222) to polynomial basis GF(2_8). Upper is the MSB
+    # N2P = np.array([
+    #     [0,0,0,1,0,0,1,0],
+    #     [1,1,1,0,1,0,1,1],
+    #     [1,1,1,0,1,1,0,1],
+    #     [0,1,0,0,0,0,1,0],
+    #     [0,1,1,1,1,1,1,0],
+    #     [1,0,1,1,0,0,1,0],
+    #     [0,0,1,0,0,0,1,0],
+    #     [0,0,0,0,0,1,0,0]])
+
+    # ### AES Affine transform. Upper is the MSB
+    # Affine = np.array([
+    #     [1,1,1,1,1,0,0,0],
+    #     [0,1,1,1,1,1,0,0],
+    #     [0,0,1,1,1,1,1,0],
+    #     [0,0,0,1,1,1,1,1],
+    #     [1,0,0,0,1,1,1,1],
+    #     [1,1,0,0,0,1,1,1],
+    #     [1,1,1,0,0,0,1,1],
+    #     [1,1,1,1,0,0,0,1]])
+
+    ### Normal bases GF(2_222) to polynomial basis GF(2_8). Lower is the MSB
+    N2P = np.array([
+        [0,0,1,0,0,0,0,0],
+        [0,1,0,0,0,1,0,0],
+        [0,1,0,0,1,1,0,1],
+        [0,1,1,1,1,1,1,0],
+        [0,1,0,0,0,0,1,0],
+        [1,0,1,1,0,1,1,1],
+        [1,1,0,1,0,1,1,1],
+        [0,1,0,0,1,0,0,0]
+        ])
+
+    ### AES Affine transform. Lower is the MSB
+    Affine = np.array([
+        [1,0,0,0,1,1,1,1],
+        [1,1,0,0,0,1,1,1],
+        [1,1,1,0,0,0,1,1],
+        [1,1,1,1,0,0,0,1],
+        [1,1,1,1,1,0,0,0],
+        [0,1,1,1,1,1,0,0],
+        [0,0,1,1,1,1,1,0],
+        [0,0,0,1,1,1,1,1]])
+
+    P2N = matReduc(np.linalg.inv(N2P))
+    N2PAffine = matReduc(Affine@N2P)
+
+
 class GF2:
     def __init__(self, val: bool = 0):
         assert val in [0, 1], f"GF2 constractor failed"
@@ -304,54 +354,6 @@ def main():
         #print(f'{power17} == {a * a * a * a * a * a * a * a * a * a * a * a * a * a * a * a * a} ?')
         print(f'{a} * {a_inv} -> {a * a_inv}')
         #print(f'{a.inv_flt()} == {a_inv} ?')
-
-    # ### Normal bases GF(2_222) to polynomial basis GF(2_8). Upper is the MSB
-    # N2P = np.array([
-    #     [0,0,0,1,0,0,1,0],
-    #     [1,1,1,0,1,0,1,1],
-    #     [1,1,1,0,1,1,0,1],
-    #     [0,1,0,0,0,0,1,0],
-    #     [0,1,1,1,1,1,1,0],
-    #     [1,0,1,1,0,0,1,0],
-    #     [0,0,1,0,0,0,1,0],
-    #     [0,0,0,0,0,1,0,0]])
-
-    # ### AES Affine transform. Upper is the MSB
-    # Affine = np.array([
-    #     [1,1,1,1,1,0,0,0],
-    #     [0,1,1,1,1,1,0,0],
-    #     [0,0,1,1,1,1,1,0],
-    #     [0,0,0,1,1,1,1,1],
-    #     [1,0,0,0,1,1,1,1],
-    #     [1,1,0,0,0,1,1,1],
-    #     [1,1,1,0,0,0,1,1],
-    #     [1,1,1,1,0,0,0,1]])
-
-    ### Normal bases GF(2_222) to polynomial basis GF(2_8). Lower is the MSB
-    N2P = np.array([
-        [0,0,1,0,0,0,0,0],
-        [0,1,0,0,0,1,0,0],
-        [0,1,0,0,1,1,0,1],
-        [0,1,1,1,1,1,1,0],
-        [0,1,0,0,0,0,1,0],
-        [1,0,1,1,0,1,1,1],
-        [1,1,0,1,0,1,1,1],
-        [0,1,0,0,1,0,0,0]
-        ])
-
-    ### AES Affine transform. Lower is the MSB
-    Affine = np.array([
-        [1,0,0,0,1,1,1,1],
-        [1,1,0,0,0,1,1,1],
-        [1,1,1,0,0,0,1,1],
-        [1,1,1,1,0,0,0,1],
-        [1,1,1,1,1,0,0,0],
-        [0,1,1,1,1,1,0,0],
-        [0,0,1,1,1,1,1,0],
-        [0,0,0,1,1,1,1,1]])
-
-    P2N = matReduc(np.linalg.inv(N2P))
-    N2PAffine = matReduc(Affine@N2P)
 
     ### Base tranform vectors
     y = GF2_8(fromint = 0xff)
