@@ -123,9 +123,15 @@ class GF2_2:
         ### times alpha
         return GF2_2(self[1], self[1] + self[0])
 
+    def sqr_scale(self):
+        return GF2_2(self[0], self[1] + self[0])
+
     def scale2(self):
         ### times alpha^2
         return GF2_2(self[1] + self[0], self[0])
+
+    def sqr_scale2(self):
+        return GF2_2(self[1] + self[0], self[1])
 
     def __getitem__(self, index):
         return self.coeff[index]
@@ -164,8 +170,8 @@ class GF2_22:
         return GF2_22(self[1], self[0])
 
     def sqr(self):
-        t0 = (self[1] + self[0]).sqr()
-        t1 = t0.scale2()
+        t0 = (self[1] + self[0])
+        t1 = t0.sqr_scale2()
         c1 = t1 + self[1].sqr()
         c0 = t1 + self[0].sqr()
         return GF2_22(c0, c1)
@@ -186,10 +192,14 @@ class GF2_22:
 
         return GF2_22(c0, c1)
 
+    def sqr_scale(self):
+        t0 = self[1] + self[0]
+        return GF2_22(self[0].sqr_scale(), t0.sqr())
+
     def inv(self):
         t0 = self[0] + self[1]
         #square_scale = GF2_2(t0[0], t0[0] + t0[1])
-        square_scale = t0.sqr().scale2()
+        square_scale = t0.sqr_scale2()
         power5 = square_scale + self[0]*self[1]
         inv = power5.sqr()
         return GF2_22(inv * self[1], inv * self[0])
@@ -230,7 +240,7 @@ class GF2_222:
 
     def inv(self):
         t0 = self[0] + self[1]
-        square_scale = t0.sqr().scale()
+        square_scale = t0.sqr_scale()
         power17 = square_scale + self[0]*self[1]
         inv = power17.inv()
         return GF2_222(inv * self[1], inv * self[0])
