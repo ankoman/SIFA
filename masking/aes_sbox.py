@@ -119,6 +119,9 @@ class GF2_2:
     def sqr(self):
         return GF2_2(self[1], self[0])
 
+    def inv(self):
+        return self.sqr()
+
     def scale(self):
         ### times alpha
         return GF2_2(self[1], self[1] + self[0])
@@ -201,7 +204,7 @@ class GF2_22:
         #square_scale = GF2_2(t0[0], t0[0] + t0[1])
         square_scale = t0.sqr_scale2()
         power5 = square_scale + self[0]*self[1]
-        inv = power5.sqr()
+        inv = power5.inv()
         return GF2_22(inv * self[1], inv * self[0])
 
     def __getitem__(self, index):
@@ -301,6 +304,10 @@ class GF2_8:
 
     def __repr__(self):
         return str(self.coeff)
+
+    def __add__(self, other):
+        return GF2_8(self[0] + other[0], self[1] + other[1], self[2] + other[2], self[3] + other[3],\
+                    self[4] + other[4], self[5] + other[5], self[6] + other[6], self[7] + other[7])
 
     def __mul__(self, other):
         ### Multiplication on a polynomial basis.
