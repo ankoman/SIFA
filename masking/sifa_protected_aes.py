@@ -1,5 +1,6 @@
 from aes_sbox import *
 from toffoli import *
+from copy import deepcopy
 import random
 
 def s_sc_4(a: GF2_22, b: GF2_22, c: GF2_22):
@@ -16,13 +17,13 @@ def main():
 
     ### Constraint generation
     a0 = GF2_22(fromint = random.randint(0, 2**4 - 1))
-    a1 = a0
+    a1 = deepcopy(a0)
     b0 = GF2_2(fromint = random.randint(0, 2**2 - 1))
-    b1 = b0
+    b1 = deepcopy(b0)
     c0 = GF2_22(fromint = random.randint(0, 2**4 - 1))
-    c1 = c0
+    c1 = deepcopy(c0)
     d0 = GF2_222(fromint = random.randint(0, 2**8 - 1))
-    d1 = d0
+    d1 = deepcopy(d0)
 
     ### Input generation
     tv = random.randint(0, 255)
@@ -47,8 +48,22 @@ def main():
 
     b0 = b0.inv()   # Bit swap
     b1 = b1.inv()   # Bit swap
-    print(b0 + b1)
-    X_222.inv()
+
+    c0.coeff[1], c1.coeff[1], a0.coeff[0], a1.coeff[0], b0, b1 = pTS_2(c0[1], c1[1], a0[0], a1[0], b0, b1)  # GF2_2 multiplication
+    c0.coeff[0], c1.coeff[0], a0.coeff[1], a1.coeff[1], b0, b1 = pTS_2(c0[0], c1[0], a0[1], a1[1], b0, b1)  # GF2_2 multiplication
+
+    d0.coeff[1], d1.coeff[1], x0.coeff[0], x1.coeff[0], c0, c1 = pTS_4(d0[1], d1[1], x0[0], x1[0], c0, c1)  # GF2_22 multiplication
+    d0.coeff[0], d1.coeff[0], x0.coeff[1], x1.coeff[1], c0, c1 = pTS_4(d0[0], d1[0], x0[1], x1[1], c0, c1)  # GF2_22 multiplication
+
+    d0 = AES_map.to_GF2_8(d0)
+    d1 = AES_map.to_GF2_8(d1)
+
+    # Add constant
+    const = GF2_8(fromint = 0x63)
+    d0 = d0 + const
+
+    print(hex((d0+d1).toInt()))
+    print(hex(AES_map.Sbox[tv]))
 
 
 
