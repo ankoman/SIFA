@@ -1,43 +1,43 @@
 
 FAULT_MODEL = "random_and_1"
-N_BITS = 2
+PROB = 0.9
+N_BITS = 8
  
 def hw(x: int) -> int:
     return bin(x).count("1") # python 3.9 and less
+
+def sx(x: int) -> float:
+    return 1/2**N_BITS
 
 def px_i(x: int, p: float) -> float:
     ### Ineffective probability
     if FAULT_MODEL == "random_and_1":
         return p**hw(x)
 
-dict_ineff_fault_dist = {}
-dict_eff_fault_dist = {}
- 
-### init dist
-for i in range(2**N_BITS):
-    for j in range(2**N_BITS):
-        dict_ineff_fault_dist[(i,j)] = 0
-        dict_eff_fault_dist[(i,j)] = 0
-
- 
-for i in range(2**N_BITS):
-    dict_ineff_fault_dist[(i,i)] = px_i(i, 0.5)
-    dict_eff_fault_dist[(i,i)] = 1 - px_i(i, 0.5)
-
- 
 ### SEI
-SEI_ineff = 0
-SEI_eff = 0
+ineff_SEI = 0
+eff_SEI = 0
 ineff_rate = 0
 eff_rate = 0
-for x in dict_ineff_fault_dist.keys():
-    if x[0] == x[1]:
-        SEI_ineff += (dict_ineff_fault_dist[x] - 1/4) **2
-        ineff_rate += dict_ineff_fault_dist[x]
-    else:
 
+for j in range(2**N_BITS):
+    ineff_SEI += (px_i(j, PROB) - sx(j)) **2
+    ineff_rate += px_i(j, PROB)
+    eff_SEI += ((1 - px_i(j, PROB)) - sx(j)) **2
+    eff_rate += 1 - px_i(j, PROB)
+
+ineff_capacity = 0
+eff_capacity = 0
+for j in range(2**N_BITS):
+    ineff_capacity += (px_i(j, PROB) / ineff_rate - sx(j)) **2
+    eff_capacity += ((1 - px_i(j, PROB)) / eff_rate - sx(j)) **2
+
+ineff_capacity *= 2**N_BITS
+eff_capacity *= 2**N_BITS
 ineff_rate /= 2**N_BITS
- 
-print(SEI)
-print(ineff_rate)
- 
+eff_rate /= 2**N_BITS
+
+print("Ineffective ")
+print(f"SEI: {ineff_SEI}, rate: {ineff_rate}, capacity: {ineff_capacity}, N: {1/ineff_rate/ineff_capacity}")
+print("Effective ")
+print(f"SEI: {eff_SEI}, rate: {eff_rate}, capacity: {eff_capacity},  N: {1/eff_rate/eff_capacity}")
