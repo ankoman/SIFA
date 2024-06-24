@@ -4,12 +4,12 @@ import random
 
 dist_bin = [1, 8, 28, 56, 70, 56, 28, 8, 1]
 
-ANALYSIS_MODEL = "HW"
+ANALYSIS_MODEL = "2bits"
 
 
 def attack_location(x, correct_key, fault_injected = 0):
     if fault_injected:
-        x |= random.randint(0,255)
+        x &= 0xfe#random.randint(0,0x3)
     y = Sbox[x]
     y ^= correct_key
     return y
@@ -19,30 +19,27 @@ def uniform_dist(x):
         return dist_bin[x] / 256
     elif ANALYSIS_MODEL == "LSB":
         return 1/2
-    elif ANALYSIS_MODEL == "7bits":
-        return 1/128
-    elif ANALYSIS_MODEL == "2bits":
-        return 1/4
+    elif "bits" in ANALYSIS_MODEL:
+        n_bits = int(ANALYSIS_MODEL[0])
+        return 1/(2**n_bits)
 
 def leak_f(x):
     if ANALYSIS_MODEL == "HW":
         return bin(x).count("1")
     elif ANALYSIS_MODEL == "LSB":
         return x & 0x1
-    elif ANALYSIS_MODEL == "7bits":
-        return x & 0x7f
-    elif ANALYSIS_MODEL == "2bits":
-        return x & 0x3
+    elif "bits" in ANALYSIS_MODEL:
+        n_bits = int(ANALYSIS_MODEL[0])
+        return x & (2**n_bits - 1)
 
 def get_SEI(key_hyp, list_ineffective, n_ineffective):
     if ANALYSIS_MODEL == "HW":
         n_leak_val = 9
     elif ANALYSIS_MODEL == "LSB":
         n_leak_val = 2
-    elif ANALYSIS_MODEL == "7bits":
-        n_leak_val = 128
-    elif ANALYSIS_MODEL == "2bits":
-        n_leak_val = 4
+    elif "bits" in ANALYSIS_MODEL:
+        n_bits = int(ANALYSIS_MODEL[0])
+        n_leak_val = 2**n_bits
 
     ### Init dictionary
     list_freq = [0]*n_leak_val
@@ -53,17 +50,17 @@ def get_SEI(key_hyp, list_ineffective, n_ineffective):
         leak = leak_f(t1)
         list_freq[leak] += 1
 
-    ### Calc SEI
-    sei = 0
-    for j in range(n_leak_val):
-        sei += (list_freq[j]/n_ineffective - uniform_dist(j))**2
-    return sei
-
-    # ### Calc CHI
-    # chi = 0
+    # ### Calc SEI
+    # sei = 0
     # for j in range(n_leak_val):
     #     sei += (list_freq[j]/n_ineffective - uniform_dist(j))**2
-    # return chi
+    # return sei
+
+    ### Calc CHI
+    chi = 0
+    for j in range(n_leak_val):
+        chi += ((list_freq[j]/n_ineffective - uniform_dist(j))**2) / uniform_dist(j)
+    return chi*n_ineffective
 
 
 def main():
