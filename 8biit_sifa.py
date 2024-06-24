@@ -1,44 +1,48 @@
 from aes import Sbox, InvSbox
 from tqdm import tqdm
 import random
+import math
 
 dist_bin = [1, 8, 28, 56, 70, 56, 28, 8, 1]
 
-ANALYSIS_MODEL = "2bits"
+ANALYSIS_MODEL = "3bits_HW" ### ['n'bits_HW or 'n'bits]
 
+def HW(x):
+    return bin(x).count("1")
+
+def identity(x):
+    return x
 
 def attack_location(x, correct_key, fault_injected = 0):
     if fault_injected:
-        x &= 0xfe#random.randint(0,0x3)
+        # x = x & 0xfc | x | random.randint(0,0x3)
+        x &= random.randint(0,0x3)
+        # x &= 0xfe
     y = Sbox[x]
     y ^= correct_key
     return y
 
 def uniform_dist(x):
-    if ANALYSIS_MODEL == "HW":
-        return dist_bin[x] / 256
-    elif ANALYSIS_MODEL == "LSB":
-        return 1/2
-    elif "bits" in ANALYSIS_MODEL:
-        n_bits = int(ANALYSIS_MODEL[0])
+    n_bits = int(ANALYSIS_MODEL[0])
+    if "HW" in ANALYSIS_MODEL:
+        return math.comb(n_bits, x) / 2**n_bits
+    else:
         return 1/(2**n_bits)
 
 def leak_f(x):
-    if ANALYSIS_MODEL == "HW":
-        return bin(x).count("1")
-    elif ANALYSIS_MODEL == "LSB":
-        return x & 0x1
-    elif "bits" in ANALYSIS_MODEL:
-        n_bits = int(ANALYSIS_MODEL[0])
-        return x & (2**n_bits - 1)
+    n_bits = int(ANALYSIS_MODEL[0])
+    if "HW" in ANALYSIS_MODEL:
+        f = HW
+    else:
+        f = identity
+        
+    return f(x & (2**n_bits - 1))
 
 def get_SEI(key_hyp, list_ineffective, n_ineffective):
-    if ANALYSIS_MODEL == "HW":
-        n_leak_val = 9
-    elif ANALYSIS_MODEL == "LSB":
-        n_leak_val = 2
-    elif "bits" in ANALYSIS_MODEL:
-        n_bits = int(ANALYSIS_MODEL[0])
+    n_bits = int(ANALYSIS_MODEL[0])
+    if "HW" in ANALYSIS_MODEL:
+        n_leak_val = n_bits + 1
+    else:
         n_leak_val = 2**n_bits
 
     ### Init dictionary
