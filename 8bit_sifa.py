@@ -5,8 +5,8 @@ import math
 
 dist_bin = [1, 8, 28, 56, 70, 56, 28, 8, 1]
 
-ANALYSIS_MODEL = "8bits_HW" ### ['n'bits_HW or 'n'bits]
-
+ANALYSIS_MODEL = "4bits_HW" ### ['n'bits_HW or 'n'bits]
+print(ANALYSIS_MODEL)
 n_bits = int(ANALYSIS_MODEL[0])
 power_two = 2**n_bits
 
@@ -18,8 +18,8 @@ def identity(x):
 
 def attack_location(x, correct_key, fault_injected = 0):
     if fault_injected:
-        x = (x & 0xfc) | (x & random.randint(0,0x3))
-        # x &= random.randint(0,0x1)
+        # x = (x & 0xf0) | (x & random.randint(0,0xf))
+        x &= 0xf0# random.randint(0,0xf0)
         # x &= 0xfe
     y = Sbox[x]
     y ^= correct_key
