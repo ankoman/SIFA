@@ -5,7 +5,7 @@ import math
 
 dist_bin = [1, 8, 28, 56, 70, 56, 28, 8, 1]
 
-ANALYSIS_MODEL = "4bits_HW" ### ['n'bits_HW or 'n'bits]
+ANALYSIS_MODEL = "7bits" ### ['n'bits_HW or 'n'bits]
 print(ANALYSIS_MODEL)
 n_bits = int(ANALYSIS_MODEL[0])
 power_two = 2**n_bits
@@ -18,9 +18,9 @@ def identity(x):
 
 def attack_location(x, correct_key, fault_injected = 0):
     if fault_injected:
-        # x = (x & 0xf0) | (x & random.randint(0,0xf))
-        x &= 0xf0# random.randint(0,0xf0)
-        # x &= 0xfe
+        # x = (x & 0xfc) | (x & random.randint(0,0x3))
+        # x &= random.randint(0,0xfc)
+        x &= 0xf0
     y = Sbox[x]
     y ^= correct_key
     return y
@@ -36,7 +36,6 @@ def leak_f(x):
         f = HW
     else:
         f = identity
-        
     return f(x & (power_two - 1))
 
 def get_SEI(key_hyp, list_ineffective, n_ineffective):
@@ -73,11 +72,12 @@ def get_SEI(key_hyp, list_ineffective, n_ineffective):
 
 def main():
 
-    for n_enc in range(100, 2010, 100):
+    for n_enc in range(10, 2010, 10):
         ave_rank = 0
         ave_sei_1st = 0
         ave_sei_2nd = 0
         ave_n_ineff = 0
+        n_rank_1 = 0
         for correct_key in range(256):
             #print(f"\nCorrect key: {correct_key:x}")
             list_ineffective = []
@@ -112,13 +112,15 @@ def main():
             ave_sei_1st += sei_1st
             ave_sei_2nd += sei_2nd
             ave_n_ineff += n_ineffective
+            if rank == 1:
+                n_rank_1 +=1
             # print(f'Correct key rank: {rank}')
 
         ave_rank /= 256
         ave_sei_1st /= 256
         ave_sei_2nd /= 256
         ave_n_ineff /= 256
-        print(f"\n #{n_enc} Ave. correct key rank = {ave_rank}, Ave. sei_1st = {ave_sei_1st}, Ave, sei_2nd = {ave_sei_2nd}, Ave. n_ineff = {ave_n_ineff}")
+        print(f"\n #{n_enc} Ave. correct key rank = {ave_rank}, Ave. sei_1st = {ave_sei_1st}, Ave, sei_2nd = {ave_sei_2nd}, Ave. n_ineff = {ave_n_ineff}, n_rank_1 = {n_rank_1}")
 
 if __name__ == '__main__':
     main()
