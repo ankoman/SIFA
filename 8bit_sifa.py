@@ -5,7 +5,7 @@ import math
 
 dist_bin = [1, 8, 28, 56, 70, 56, 28, 8, 1]
 
-ANALYSIS_MODEL = "3bits" ### ['n'bits_HW or 'n'bits]
+ANALYSIS_MODEL = "2bits" ### ['n'bits_HW or 'n'bits]
 print(ANALYSIS_MODEL)
 n_bits = int(ANALYSIS_MODEL[0])
 power_two = 2**n_bits
@@ -18,9 +18,9 @@ def identity(x):
 
 def attack_location(x, correct_key, fault_injected = 0):
     if fault_injected:
-        # x = (x & 0xfc) | (x & random.randint(0,0x3))
-        # x &= random.randint(0,0xfc)
-        x &= 0xfe
+        x = (x & 0xfc) | (x & random.randint(0,0x3))
+        # x &= random.randint(0,0xff)
+        # x &= 0xfe
     y = Sbox[x]
     y ^= correct_key
     return y
@@ -72,7 +72,7 @@ def get_SEI(key_hyp, list_ineffective, n_ineffective):
 
 def main():
 
-    for n_enc in range(10, 2010, 10):
+    for n_enc in range(10000, 201000, 10000):
         ave_rank = 0
         ave_sei_correct = 0
         ave_sei_wrong_max = 0
@@ -124,8 +124,9 @@ def main():
         ave_sei_wrong_max /= 256
         ave_sei_wrong_mu /= 256
         ave_n_ineff /= 256
-        print(f"\n #{n_enc} Ave. correct key rank = {ave_rank:.1f}, Ave. sei_r = {ave_sei_correct:.1f}, Ave. sei_w_max = {ave_sei_wrong_max:.1f}, "
-                f"Ave, sei_w_mu = {ave_sei_wrong_mu:.1f}, Ave. n_ineff = {ave_n_ineff:.1f}, n_rank_1 = {n_rank_1}")
+        # print(f"\n #{n_enc} Ave. correct key rank = {ave_rank:.1f}, Ave. sei_r = {ave_sei_correct:.1f}, Ave. sei_w_max = {ave_sei_wrong_max:.1f}, "
+        #         f"Ave, sei_w_mu = {ave_sei_wrong_mu:.1f}, Ave. n_ineff = {ave_n_ineff:.1f}, n_rank_1 = {n_rank_1}")
+        print(f"{ave_sei_correct},{ave_sei_wrong_max},{ave_sei_wrong_mu}")
 
 if __name__ == '__main__':
     main()
