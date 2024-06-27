@@ -73,6 +73,41 @@ Rcon = (
     0xD4, 0xB3, 0x7D, 0xFA, 0xEF, 0xC5, 0x91, 0x39,
 )
 
+def mix_single_column(a):
+    b = [0,0,0,0]
+    # please see Sec 4.1.2 in The Design of Rijndael
+    t = a[0] ^ a[1] ^ a[2] ^ a[3]
+    u = a[0]
+    b[0] = t ^ xtime(a[0] ^ a[1]) ^ a[0]
+    b[1] = t ^ xtime(a[1] ^ a[2]) ^ a[1]
+    b[2] = t ^ xtime(a[2] ^ a[3]) ^ a[2]
+    b[3] = t ^ xtime(a[3] ^ u) ^ a[3]
+
+    return b
+
+def inv_mix_single_column(s):
+    t = [0,0,0,0]
+    # see Sec 4.1.3 in The Design of Rijndael
+    u = xtime(xtime(s[0] ^ s[2]))
+    v = xtime(xtime(s[1] ^ s[3]))
+    t[0] = s[0] ^ u
+    t[1] = s[1] ^ v
+    t[2] = s[2] ^ u
+    t[3] = s[3] ^ v
+
+    return mix_single_column(t)
+
+def sub_bytes_column(s):
+    t = []
+    for i in range(4):
+        t.append(Sbox[s[i]])
+    return t
+
+def inv_sub_bytes_column(s):
+    t = []
+    for i in range(4):
+        t.append(InvSbox[s[i]])
+    return t
 
 def text2matrix(text):
     matrix = []
@@ -92,6 +127,18 @@ def matrix2text(matrix):
             text |= (matrix[i][j] << (120 - 8 * (4 * i + j)))
     return text
 
+def text2column(text):
+    column = []
+    for i in range(4):
+        byte = (text >> (8 * (3 - i))) & 0xFF
+        column.append(byte)
+    return column
+
+def column2text(column):
+    text = 0
+    for i in range(4):
+        text |= (column[i] << (24 - 8 * i))
+    return text
 
 class AES:
     def __init__(self, master_key):
@@ -217,3 +264,26 @@ class AES:
             s[i][3] ^= v
 
         self.__mix_columns(s)
+
+
+def xt(a):
+    a = a << 1
+    if a > 255:
+        a -= 256
+        a ^= 0x1b
+    return a
+
+def main():
+    ###MC
+    x0 = 145
+    x1 = 41
+    x2 = 97
+    x3 = 0
+
+    y0 = xt(x0) ^ xt(x1) ^ x1 ^ x2 ^ x3
+
+    print(Sbox[y0])
+
+
+if __name__ == '__main__':
+    main()
