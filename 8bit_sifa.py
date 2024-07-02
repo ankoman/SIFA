@@ -5,9 +5,9 @@ random.seed(20)
 
 dist_bin = [1, 8, 28, 56, 70, 56, 28, 8, 1]
 
-ANALYSIS_MODEL = "5bits" ### ['n'bits_HW or 'n'bits]
+ANALYSIS_MODEL = "8bits_HW" ### ['n'bits_HW or 'n'bits]
 ATTACK_LOCATION = "SB_in" ### ['SB_in' or "MC_in"]
-TARGET_BITS = None #(0,1,2,3,4) ### A tuple of 0-7 or None
+TARGET_BITS = None# (0,1,2,3,4,5,6,) ### A tuple of 0-7 or None
 print(ANALYSIS_MODEL)
 n_bits = int(ANALYSIS_MODEL[0])
 if not TARGET_BITS is None:
@@ -28,8 +28,8 @@ def fault_injection(x, correct_key, fault_injected = 0):
         fault_byte = x
 
     if fault_injected:
-        fault_byte = (fault_byte & 0xe0) | (fault_byte & random.randint(0,0x1f))
-        # fault_byte &= random.randint(0,0xff)
+        # fault_byte = (fault_byte & 0x80) | (fault_byte & random.randint(0,0x7f))
+        fault_byte &= random.randint(0,0xff)
         # fault_byte &= 0x1
 
     if ATTACK_LOCATION == "MC_in":
@@ -63,8 +63,8 @@ def leak_f(x, _target_bits):
     y = 0
     for bit_pos in _target_bits:
         y <<= 1
-        y |= f((x & (2**bit_pos)) >> bit_pos)
-    return y
+        y |= (x & (2**bit_pos)) >> bit_pos
+    return f(y)
 
 def get_SEI(key_hyp, list_ineffective, n_ineffective):
     if "HW" in ANALYSIS_MODEL:
@@ -117,7 +117,7 @@ def get_SEI(key_hyp, list_ineffective, n_ineffective):
 
 def main():
 
-    for n_enc in range(10, 310, 10):
+    for n_enc in range(10, 510, 10):
         ave_rank = 0
         ave_sei_correct = 0
         ave_sei_wrong_max = 0
@@ -176,7 +176,7 @@ def main():
         ave_n_ineff /= n_ave_key
         # print(f"#{n_enc} Ave. correct key rank = {ave_rank:.1f}, Ave. sei_r = {ave_sei_correct:.1f}, Ave. sei_w_max = {ave_sei_wrong_max:.1f}, "
                 # f"Ave, sei_w_mu = {ave_sei_wrong_mu:.1f}, Ave. n_ineff = {ave_n_ineff:.1f}, n_rank_1 = {n_rank_1}")
-        print(f"{ave_sei_correct},{ave_sei_wrong_max},{ave_sei_wrong_mu}")
+        print(f"{ave_sei_correct} {ave_sei_wrong_max}")
 
 if __name__ == '__main__':
     main()
