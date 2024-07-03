@@ -1,14 +1,15 @@
-from aes import Sbox, InvSbox, AES, text2column, column2text, mix_single_column, inv_mix_single_column, sub_bytes_column, inv_sub_bytes_column
+from aes import Sbox, InvSbox, AES, text2column, column2text, mix_single_column, inv_mix_single_column,\
+        sub_bytes_column, inv_sub_bytes_column, matrix2text
 from tqdm import tqdm
-import random, math, itertools
+import random, math, itertools, pickle
 random.seed(20)
 
 dist_bin = [1, 8, 28, 56, 70, 56, 28, 8, 1]
 
-ANALYSIS_MODEL = "8bits_HW" ### ['n'bits_HW or 'n'bits]
+ANALYSIS_MODEL = "1bits" ### ['n'bits_HW or 'n'bits]
 ATTACK_LOCATION = "SB_in" ### ['SB_in' or "MC_in"]
 TARGET_BITS = None# (0,1,2,3,4,5,6,) ### A tuple of 0-7 or None
-print(ANALYSIS_MODEL)
+print(ANALYSIS_MODEL, ATTACK_LOCATION, TARGET_BITS)
 n_bits = int(ANALYSIS_MODEL[0])
 if not TARGET_BITS is None:
     assert n_bits == len(TARGET_BITS), "The number of model bits and target bits differ"
@@ -29,8 +30,8 @@ def fault_injection(x, correct_key, fault_injected = 0):
 
     if fault_injected:
         # fault_byte = (fault_byte & 0x80) | (fault_byte & random.randint(0,0x7f))
-        fault_byte &= random.randint(0,0xff)
-        # fault_byte &= 0x1
+        # fault_byte &= random.randint(0,0xff)
+        fault_byte &= 0x1
 
     if ATTACK_LOCATION == "MC_in":
         y = mix_single_column([x[0], x[1], x[2], fault_byte])
@@ -117,7 +118,7 @@ def get_SEI(key_hyp, list_ineffective, n_ineffective):
 
 def main():
 
-    for n_enc in range(10, 510, 10):
+    for n_enc in range(10, 1510, 10):
         ave_rank = 0
         ave_sei_correct = 0
         ave_sei_wrong_max = 0
@@ -153,6 +154,7 @@ def main():
                 ### Correct key rank
                 rank = SEI_sorted.index((hex(correct_key), dict_SEI[hex(correct_key)])) + 1
                 sei_correct = SEI_sorted[rank-1][1]
+
                 list_sei = list(dict_SEI.values())
                 list_sei.remove(sei_correct)
                 sei_wrong_max = max(list_sei)
@@ -176,7 +178,64 @@ def main():
         ave_n_ineff /= n_ave_key
         # print(f"#{n_enc} Ave. correct key rank = {ave_rank:.1f}, Ave. sei_r = {ave_sei_correct:.1f}, Ave. sei_w_max = {ave_sei_wrong_max:.1f}, "
                 # f"Ave, sei_w_mu = {ave_sei_wrong_mu:.1f}, Ave. n_ineff = {ave_n_ineff:.1f}, n_rank_1 = {n_rank_1}")
-        print(f"{ave_sei_correct} {ave_sei_wrong_max}")
+        print(f"{ave_sei_correct} {ave_sei_wrong_max} {ave_n_ineff}")
+
+def real_device():
+
+    ctxts = []
+    with open('./ctxt.pkl', 'rb') as f:
+        ctxts = pickle.load(f)
+
+    f_path = r'/mnt/c/Users/sakamoto/Desktop/data_0626/ciphertext_random1_N=3000_Period=50_Round=9_Delay=10_220905_pprm1_50ns_10bit.pkl'
+    ctxts_fault = []
+    with open(f_path, 'rb') as f:
+        ctxts_fault = pickle.load(f)
+
+    master_key = 0x2b7e151628aed2a6abf7158809cf4f3c
+    aes = AES(master_key)
+    round_key = [aes.round_keys[4 * i : 4 * (i + 1)] for i in range(10)]
+    target_key = matrix2text(round_key[9])
+    correct_key = target_key >> 120
+
+    for n_enc in range(10, 2510, 10):
+        list_ineffective = []
+        dict_SEI = {}
+        for i in range(n_enc):
+            C = ctxts[i] >> 120
+            Cp = ctxts_fault[i][0]
+
+            if C == Cp:
+                # ineffective
+                list_ineffective.append(Cp)
+        n_ineffective = len(list_ineffective)
+        # print(f'{n_ineffective} ineffective faults out of {n_enc} fault injection ({n_ineffective/n_enc*100} %)')
+
+        sei_correct, sei_wrong_max, sei_wrong_mu, sei_1st, sei_2nd = 0, 0, 0, 0, 0
+        if n_ineffective > 0:
+            for key_hyp in range(256):
+                dict_SEI[hex(key_hyp)] = get_SEI(key_hyp, list_ineffective, n_ineffective)
+            SEI_sorted = sorted(dict_SEI.items(), key=lambda x:x[1])[::-1]
+            # print(f'Top 10 SEIs: {SEI_sorted[:9]}')
+
+            ### Correct key rank
+            rank = SEI_sorted.index((hex(correct_key), dict_SEI[hex(correct_key)])) + 1
+            sei_1st = SEI_sorted[0]
+            sei_2nd = SEI_sorted[1]
+            sei_correct = SEI_sorted[rank-1][1]
+            list_sei = list(dict_SEI.values())
+            list_sei.remove(sei_correct)
+            sei_wrong_max = max(list_sei)
+            sei_wrong_mu = sum(list_sei)/len(list_sei)
+
+        else:
+            rank = 128
+        # print(f'Correct key rank: {rank}')
+
+
+        # print(f"#{n_enc} Ave. correct key rank = {ave_rank:.1f}, Ave. sei_r = {ave_sei_correct:.1f}, Ave. sei_w_max = {ave_sei_wrong_max:.1f}, "
+                # f"Ave, sei_w_mu = {ave_sei_wrong_mu:.1f}, Ave. n_ineff = {ave_n_ineff:.1f}, n_rank_1 = {n_rank_1}")
+        print(f"{sei_correct} {sei_wrong_max} {n_ineffective} {sei_1st} {sei_2nd}")
+
 
 if __name__ == '__main__':
-    main()
+    real_device()

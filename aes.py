@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+import pickle
 
 """
     Copyright (C) 2012 Bo Zhu http://about.bozhu.me
@@ -273,17 +273,50 @@ def xt(a):
         a ^= 0x1b
     return a
 
+def ptxt2text(ptxt):
+    tmp = 0
+    for elem in ptxt:
+        tmp <<= 16
+        tmp += elem
+    return tmp
+
+def ctxt2text(ctxt):
+    tmp = 0
+    for elem in ctxt:
+        tmp <<= 8
+        tmp += elem
+    return tmp
+
 def main():
-    ###MC
-    x0 = 145
-    x1 = 41
-    x2 = 97
-    x3 = 0
+    f_path = r'/mnt/c/Users/sakamoto/Desktop/data_0626/random1_30000.pkl'
+    ptxts = []
+    with open(f_path, 'rb') as f:
+        ptxts = pickle.load(f)[:2999]
 
-    y0 = xt(x0) ^ xt(x1) ^ x1 ^ x2 ^ x3
+    f_path = r'/mnt/c/Users/sakamoto/Desktop/data_0626/ciphertext_random1_N=3000_Period=60_Round=9_Delay=10_220905_pprm1_50ns_10bit.pkl'
+    ctxts_fault = []
+    with open(f_path, 'rb') as f:
+        ctxts_fault = pickle.load(f)
 
-    print(Sbox[y0])
+    master_key = 0x2b7e151628aed2a6abf7158809cf4f3c
+    aes = AES(master_key)
+    round_key = [aes.round_keys[4 * i : 4 * (i + 1)] for i in range(10)]
+    target_key = matrix2text(round_key[9])
+    print(f"Traget key: {target_key:x}")
 
+    list_ptxt = []
+    list_ctxt = []
+    for ptxt in ptxts:
+        ptxt = ptxt2text(ptxt)
+        ctxt = aes.encrypt(ptxt)
+        list_ptxt.append(ptxt)
+        list_ctxt.append(ctxt)
+    
+    with open('./ptxt.pkl', 'wb') as f:
+        pickle.dump(list_ptxt, f)
 
+    with open('./ctxt.pkl', 'wb') as f:
+        pickle.dump(list_ctxt, f)
+        
 if __name__ == '__main__':
     main()
