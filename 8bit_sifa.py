@@ -1,19 +1,16 @@
 from aes import Sbox, InvSbox, AES, text2column, column2text, mix_single_column, inv_mix_single_column,\
         sub_bytes_column, inv_sub_bytes_column, matrix2text
 from tqdm import tqdm
-import random, math, itertools, pickle
+import random, math, itertools, pickle, sys
 random.seed(20)
 
 dist_bin = [1, 8, 28, 56, 70, 56, 28, 8, 1]
 
 ANALYSIS_MODEL = "1bits" ### ['n'bits_HW or 'n'bits]
 ATTACK_LOCATION = "SB_in" ### ['SB_in' or "MC_in"]
-TARGET_BITS = None# (0,1,2,3,4,5,6,) ### A tuple of 0-7 or None
-print(ANALYSIS_MODEL, ATTACK_LOCATION, TARGET_BITS)
-n_bits = int(ANALYSIS_MODEL[0])
-if not TARGET_BITS is None:
-    assert n_bits == len(TARGET_BITS), "The number of model bits and target bits differ"
-power_two = 2**n_bits
+TARGET_BITS = (6,) ### A tuple of 0-7 or None
+NORMALIZE = True
+
 n_ave_key = 64
 
 def HW(x):
@@ -29,9 +26,9 @@ def fault_injection(x, correct_key, fault_injected = 0):
         fault_byte = x
 
     if fault_injected:
-        # fault_byte = (fault_byte & 0x80) | (fault_byte & random.randint(0,0x7f))
+        fault_byte = (fault_byte & 0xfe) | (fault_byte & random.randint(0,0x1))
         # fault_byte &= random.randint(0,0xff)
-        fault_byte &= 0x1
+        # fault_byte &= 0x1
 
     if ATTACK_LOCATION == "MC_in":
         y = mix_single_column([x[0], x[1], x[2], fault_byte])
@@ -108,17 +105,23 @@ def get_SEI(key_hyp, list_ineffective, n_ineffective):
             t_chi = 0
             for j in range(n_leak_val):
                 t_chi += ((list_freq[i][j]/n_ineffective - uniform_dist(j))**2) / uniform_dist(j)
+            t_chi = t_chi*n_ineffective
+            if NORMALIZE:
+                t_chi = (t_chi - deg_freedom) / s_W
             chi = max(chi, t_chi)
     else:
         for j in range(n_leak_val):
             chi += ((list_freq[0][j]/n_ineffective - uniform_dist(j))**2) / uniform_dist(j)
+        chi = chi*n_ineffective
+        if NORMALIZE:
+            chi = (chi - deg_freedom) / s_W
 
-    return chi*n_ineffective
+    return chi
 
 
 def main():
 
-    for n_enc in range(10, 1510, 10):
+    for n_enc in range(10, 510, 10):
         ave_rank = 0
         ave_sei_correct = 0
         ave_sei_wrong_max = 0
@@ -178,7 +181,7 @@ def main():
         ave_n_ineff /= n_ave_key
         # print(f"#{n_enc} Ave. correct key rank = {ave_rank:.1f}, Ave. sei_r = {ave_sei_correct:.1f}, Ave. sei_w_max = {ave_sei_wrong_max:.1f}, "
                 # f"Ave, sei_w_mu = {ave_sei_wrong_mu:.1f}, Ave. n_ineff = {ave_n_ineff:.1f}, n_rank_1 = {n_rank_1}")
-        print(f"{ave_sei_correct} {ave_sei_wrong_max} {ave_n_ineff}")
+        print(f"{ave_sei_correct} {ave_sei_wrong_max}")
 
 def real_device():
 
@@ -193,16 +196,19 @@ def real_device():
 
     master_key = 0x2b7e151628aed2a6abf7158809cf4f3c
     aes = AES(master_key)
-    round_key = [aes.round_keys[4 * i : 4 * (i + 1)] for i in range(10)]
-    target_key = matrix2text(round_key[9])
+    round_key = [aes.round_keys[4 * i : 4 * (i + 1)] for i in range(11)]
+    target_key = matrix2text(round_key[10])
     correct_key = target_key >> 120
+    step = 100
 
-    for n_enc in range(10, 2510, 10):
-        list_ineffective = []
-        dict_SEI = {}
-        for i in range(n_enc):
-            C = ctxts[i] >> 120
-            Cp = ctxts_fault[i][0]
+    list_ineffective = []
+    dict_SEI = {}
+    for n_txt in range(step, 3001, step):
+        ctxts_t = ctxts[n_txt - step: n_txt]
+        ctxts_fault_t = ctxts_fault[n_txt - step: n_txt]
+        for i in range(step):
+            C = ctxts_t[i] >> 120
+            Cp = ctxts_fault_t[i][0]
 
             if C == Cp:
                 # ineffective
@@ -234,8 +240,18 @@ def real_device():
 
         # print(f"#{n_enc} Ave. correct key rank = {ave_rank:.1f}, Ave. sei_r = {ave_sei_correct:.1f}, Ave. sei_w_max = {ave_sei_wrong_max:.1f}, "
                 # f"Ave, sei_w_mu = {ave_sei_wrong_mu:.1f}, Ave. n_ineff = {ave_n_ineff:.1f}, n_rank_1 = {n_rank_1}")
-        print(f"{sei_correct} {sei_wrong_max} {n_ineffective} {sei_1st} {sei_2nd}")
+        print(f"{sei_correct} {sei_wrong_max}")
 
 
 if __name__ == '__main__':
+    if len(sys.argv) > 1:
+        ANALYSIS_MODEL = sys.argv[1]
+    n_bits = int(ANALYSIS_MODEL[0])
+    if not TARGET_BITS is None:
+        assert n_bits == len(TARGET_BITS), "The number of model bits and target bits differ"
+    power_two = 2**n_bits
+    deg_freedom = power_two - 1
+    s_W = math.sqrt(2*deg_freedom)
+    print(ANALYSIS_MODEL, ATTACK_LOCATION, TARGET_BITS)
+
     real_device()

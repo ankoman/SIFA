@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import pickle
+import numpy as np
 
 """
     Copyright (C) 2012 Bo Zhu http://about.bozhu.me
@@ -284,10 +285,10 @@ def ctxt2text(ctxt):
     tmp = 0
     for elem in ctxt:
         tmp <<= 8
-        tmp += elem
+        tmp += int(elem)
     return tmp
 
-def main():
+def pkl():
     f_path = r'/mnt/c/Users/sakamoto/Desktop/data_0626/random1_30000.pkl'
     ptxts = []
     with open(f_path, 'rb') as f:
@@ -317,6 +318,75 @@ def main():
 
     with open('./ctxt.pkl', 'wb') as f:
         pickle.dump(list_ctxt, f)
-        
+
+def inv_last_round(aes, ctxt):
+    aes.cipher_state = text2matrix(ctxt)
+
+    # aes._AES__add_round_key(aes.cipher_state, aes.round_keys[40:])
+    # aes._AES__inv_shift_rows(aes.cipher_state)
+    # aes._AES__inv_sub_bytes(aes.cipher_state)
+
+    return aes.cipher_state
+
+def main():
+    f_path = r'./ctxt.pkl'
+    ctxts = []
+    with open(f_path, 'rb') as f:
+        ctxts = pickle.load(f)
+
+    # f_path = r'/mnt/c/Users/sakamoto/Desktop/data_0626/ciphertext_random1_N=3000_Period=50_Round=9_Delay=10_220905_pprm1_50ns_10bit.pkl'
+    f_path = r'/mnt/c/Users/sakamoto/Desktop/glitcher_0625/ctlst_glitch_width=4.6ns'
+    ctxts_fault = []
+    with open(f_path, 'rb') as f:
+        ctxts_fault = pickle.load(f)
+
+    master_key = 0x2b7e151628aed2a6abf7158809cf4f3c
+    aes = AES(master_key)
+
+    list_00 = [0] * 8
+    list_01 = [0] * 8
+    list_10 = [0] * 8
+    list_11 = [0] * 8
+
+    for ctxt, ctxt_f in zip(ctxts_fault[0], ctxts_fault[1]):
+
+        y0 = inv_last_round(aes, ctxt2text(ctxt))[1][0]
+        y1 = inv_last_round(aes, ctxt2text(ctxt_f))[1][0]
+
+        for i in range(8):
+            b0 = (y0 >> i) & 1
+            b1 = (y1 >> i) & 1
+            if b0 == 0:
+                if b1 == 0:
+                    list_00[i] += 1
+                else:
+                    list_01[i] += 1
+            else:
+                if b1 == 0:
+                    list_10[i] += 1
+                else:
+                    list_11[i] += 1
+
+    print(' ', end='')
+    for i in range(7, -1, -1):
+        print(f'{i} ', end='')
+    print()
+    print('0->0 ', end='')
+    for i in range(7, -1, -1):
+        print(f'{list_00[i]} ', end='')
+    print()
+    print('1->1 ', end='')
+    for i in range(7, -1, -1):
+        print(f'{list_11[i]} ', end='')
+    print()
+    print('0->1 ', end='')
+    for i in range(7, -1, -1):
+        print(f'{list_01[i]} ', end='')
+    print()
+    print('1->0 ', end='')
+    for i in range(7, -1, -1):
+        print(f'{list_10[i]} ', end='')
+    print()
+
 if __name__ == '__main__':
     main()
