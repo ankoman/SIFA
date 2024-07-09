@@ -1,6 +1,7 @@
 #!/usr/bin/env python
-import pickle
+import pickle, sys
 import numpy as np
+import matplotlib.pyplot as plt
 
 """
     Copyright (C) 2012 Bo Zhu http://about.bozhu.me
@@ -322,36 +323,25 @@ def pkl():
 def inv_last_round(aes, ctxt):
     aes.cipher_state = text2matrix(ctxt)
 
-    # aes._AES__add_round_key(aes.cipher_state, aes.round_keys[40:])
-    # aes._AES__inv_shift_rows(aes.cipher_state)
-    # aes._AES__inv_sub_bytes(aes.cipher_state)
+    aes._AES__add_round_key(aes.cipher_state, aes.round_keys[40:])
+    #aes._AES__inv_shift_rows(aes.cipher_state)
+    aes._AES__inv_sub_bytes(aes.cipher_state)
 
     return aes.cipher_state
 
-def main():
-    f_path = r'./ctxt.pkl'
-    ctxts = []
-    with open(f_path, 'rb') as f:
-        ctxts = pickle.load(f)
-
-    # f_path = r'/mnt/c/Users/sakamoto/Desktop/data_0626/ciphertext_random1_N=3000_Period=50_Round=9_Delay=10_220905_pprm1_50ns_10bit.pkl'
-    f_path = r'/mnt/c/Users/sakamoto/Desktop/glitcher_0625/ctlst_glitch_width=4.6ns'
-    ctxts_fault = []
-    with open(f_path, 'rb') as f:
-        ctxts_fault = pickle.load(f)
-
-    master_key = 0x2b7e151628aed2a6abf7158809cf4f3c
-    aes = AES(master_key)
+def make_list(aes, ctxts, ctxts_fault, target_byte):
 
     list_00 = [0] * 8
     list_01 = [0] * 8
     list_10 = [0] * 8
     list_11 = [0] * 8
 
-    for ctxt, ctxt_f in zip(ctxts_fault[0], ctxts_fault[1]):
+    row = target_byte % 4
+    column = target_byte // 4
 
-        y0 = inv_last_round(aes, ctxt2text(ctxt))[1][0]
-        y1 = inv_last_round(aes, ctxt2text(ctxt_f))[1][0]
+    for ctxt, ctxt_f in zip(ctxts, ctxts_fault):
+        y0 = inv_last_round(aes, ctxt)[column][row]
+        y1 = inv_last_round(aes, ctxt2text(ctxt_f))[column][row]
 
         for i in range(8):
             b0 = (y0 >> i) & 1
@@ -367,26 +357,60 @@ def main():
                 else:
                     list_11[i] += 1
 
-    print(' ', end='')
-    for i in range(7, -1, -1):
-        print(f'{i} ', end='')
-    print()
-    print('0->0 ', end='')
-    for i in range(7, -1, -1):
-        print(f'{list_00[i]} ', end='')
-    print()
-    print('1->1 ', end='')
-    for i in range(7, -1, -1):
-        print(f'{list_11[i]} ', end='')
-    print()
-    print('0->1 ', end='')
-    for i in range(7, -1, -1):
-        print(f'{list_01[i]} ', end='')
-    print()
-    print('1->0 ', end='')
-    for i in range(7, -1, -1):
-        print(f'{list_10[i]} ', end='')
-    print()
+    return list_00, list_01, list_10, list_11
+
+    
+def main(N_TRACES = 1000):
+    
+    f_path = r'./ctxt.pkl'
+    ctxts = []
+    with open(f_path, 'rb') as f:
+        ctxts = pickle.load(f)[:N_TRACES]
+
+    f_path = r'/mnt/c/Users/sakamoto/Desktop/data_0626/ciphertext_random1_N=3000_Period=50_Round=9_Delay=10_220905_pprm1_50ns_10bit.pkl'
+    # f_path = r'/mnt/c/Users/sakamoto/Desktop/glitcher_0625/ctlst_glitch_width=4.6ns'
+    ctxts_fault = []
+    with open(f_path, 'rb') as f:
+        ctxts_fault = pickle.load(f)[:N_TRACES]
+
+    master_key = 0x2b7e151628aed2a6abf7158809cf4f3c
+    aes = AES(master_key)
+
+    fig, ax = plt.subplots(figsize=(16, 8), nrows=4, ncols=4, sharex=False)
+    for target_byte in range(16):
+        list_00, list_01, list_10, list_11 = make_list(aes, ctxts, ctxts_fault, target_byte)
+
+        print(' ', end='')
+        for i in range(7, -1, -1):
+            print(f'{i} ', end='')
+        print()
+        print('0->0 ', end='')
+        for i in range(7, -1, -1):
+            print(f'{list_00[i]} ', end='')
+        print()
+        print('1->1 ', end='')
+        for i in range(7, -1, -1):
+            print(f'{list_11[i]} ', end='')
+        print()
+        print('0->1 ', end='')
+        for i in range(7, -1, -1):
+            print(f'{list_01[i]} ', end='')
+        print()
+        print('1->0 ', end='')
+        for i in range(7, -1, -1):
+            print(f'{list_10[i]} ', end='')
+        print()
+
+        col = target_byte // 4
+        row = target_byte % 4
+        ax[row, col].bar([0,1,2,3,4,5,6,7], list_10)
+        ax[row, col].bar([0,1,2,3,4,5,6,7], list_01, bottom = list_10)
+        ax[row, col].invert_xaxis()
+    plt.show()
 
 if __name__ == '__main__':
-    main()
+
+    N_TRACES = 1000
+    if len(sys.argv) > 1:
+        N_TRACES = int(sys.argv[1])
+    main(N_TRACES)
