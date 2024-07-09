@@ -8,7 +8,7 @@ dist_bin = [1, 8, 28, 56, 70, 56, 28, 8, 1]
 
 ANALYSIS_MODEL = "1bits" ### ['n'bits_HW or 'n'bits]
 ATTACK_LOCATION = "SB_in" ### ['SB_in' or "MC_in"]
-TARGET_BITS = (6,) ### A tuple of 0-7 or None
+TARGET_BITS = None #(6,) ### A tuple of 0-7 or None
 NORMALIZE = True
 
 n_ave_key = 64
@@ -143,7 +143,7 @@ def main():
                 Cp = fault_injection(int_state, correct_key, fault_injected = 1)
                 if C == Cp:
                     # ineffective
-                    list_ineffective.append(Cp)
+                    list_ineffective.append(C)
             n_ineffective = len(list_ineffective)
             # print(f'{n_ineffective} ineffective faults out of {n_enc} fault injection ({n_ineffective/n_enc*100} %)')
 
@@ -189,7 +189,7 @@ def real_device():
     with open('./ctxt.pkl', 'rb') as f:
         ctxts = pickle.load(f)
 
-    f_path = r'/mnt/c/Users/sakamoto/Desktop/data_0626/ciphertext_random1_N=3000_Period=50_Round=9_Delay=10_220905_pprm1_50ns_10bit.pkl'
+    f_path = r'/mnt/c/Users/sakamoto/Desktop/data_0626/ciphertext_random1_N=3000_Period=48_Round=9_Delay=10_220905_pprm1_50ns_10bit.pkl'
     ctxts_fault = []
     with open(f_path, 'rb') as f:
         ctxts_fault = pickle.load(f)
@@ -198,60 +198,83 @@ def real_device():
     aes = AES(master_key)
     round_key = [aes.round_keys[4 * i : 4 * (i + 1)] for i in range(11)]
     target_key = matrix2text(round_key[10])
-    correct_key = target_key >> 120
     step = 100
+    last = 2999
 
-    list_ineffective = []
-    dict_SEI = {}
-    for n_txt in range(step, 3001, step):
-        ctxts_t = ctxts[n_txt - step: n_txt]
-        ctxts_fault_t = ctxts_fault[n_txt - step: n_txt]
-        for i in range(step):
-            C = ctxts_t[i] >> 120
-            Cp = ctxts_fault_t[i][0]
+    sei_correct_bytes = []
+    sei_wrong_max_bytes = []
+    n_ineff_bytes = []
+    rank_bytes = []
+    for target_byte in range(16):
+        print(f'\n{target_byte}バイト目')
+        correct_key = (target_key >> (120 - target_byte*8)) & 0xff
+        list_ineffective = []
+        dict_SEI = {}
+        for n_txt in range(step, last, step):
+            ctxts_t = ctxts[n_txt - step: n_txt]
+            ctxts_fault_t = ctxts_fault[n_txt - step: n_txt]
+            for i in range(step):
+                C = (ctxts_t[i] >> (120 - target_byte*8)) & 0xff
+                Cp = ctxts_fault_t[i][target_byte]
 
-            if C == Cp:
-                # ineffective
-                list_ineffective.append(Cp)
-        n_ineffective = len(list_ineffective)
-        # print(f'{n_ineffective} ineffective faults out of {n_enc} fault injection ({n_ineffective/n_enc*100} %)')
+                if C == Cp:
+                    # ineffective
+                    list_ineffective.append(C)
+            n_ineffective = len(list_ineffective)
 
-        sei_correct, sei_wrong_max, sei_wrong_mu, sei_1st, sei_2nd = 0, 0, 0, 0, 0
-        if n_ineffective > 0:
-            for key_hyp in range(256):
-                dict_SEI[hex(key_hyp)] = get_SEI(key_hyp, list_ineffective, n_ineffective)
-            SEI_sorted = sorted(dict_SEI.items(), key=lambda x:x[1])[::-1]
-            # print(f'Top 10 SEIs: {SEI_sorted[:9]}')
+            # print(f'{n_ineffective} ineffective faults out of {n_enc} fault injection ({n_ineffective/n_enc*100} %)')
 
-            ### Correct key rank
-            rank = SEI_sorted.index((hex(correct_key), dict_SEI[hex(correct_key)])) + 1
-            sei_1st = SEI_sorted[0]
-            sei_2nd = SEI_sorted[1]
-            sei_correct = SEI_sorted[rank-1][1]
-            list_sei = list(dict_SEI.values())
-            list_sei.remove(sei_correct)
-            sei_wrong_max = max(list_sei)
-            sei_wrong_mu = sum(list_sei)/len(list_sei)
+            sei_correct, sei_wrong_max, sei_wrong_mu, sei_1st, sei_2nd = 0, 0, 0, 0, 0
+            if n_ineffective > 0:
+                for key_hyp in range(256):
+                    dict_SEI[hex(key_hyp)] = get_SEI(key_hyp, list_ineffective, n_ineffective)
+                SEI_sorted = sorted(dict_SEI.items(), key=lambda x:x[1])[::-1]
+                # print(f'Top 10 SEIs: {SEI_sorted[:9]}')
 
-        else:
-            rank = 128
-        # print(f'Correct key rank: {rank}')
+                ### Correct key rank
+                rank = SEI_sorted.index((hex(correct_key), dict_SEI[hex(correct_key)])) + 1
+                sei_1st = SEI_sorted[0]
+                sei_2nd = SEI_sorted[1]
+                sei_correct = SEI_sorted[rank-1][1]
+                list_sei = list(dict_SEI.values())
+                list_sei.remove(sei_correct)
+                sei_wrong_max = max(list_sei)
+                sei_wrong_mu = sum(list_sei)/len(list_sei)
+
+            else:
+                rank = 128
+            # print(f'Correct key rank: {rank}')
 
 
-        # print(f"#{n_enc} Ave. correct key rank = {ave_rank:.1f}, Ave. sei_r = {ave_sei_correct:.1f}, Ave. sei_w_max = {ave_sei_wrong_max:.1f}, "
-                # f"Ave, sei_w_mu = {ave_sei_wrong_mu:.1f}, Ave. n_ineff = {ave_n_ineff:.1f}, n_rank_1 = {n_rank_1}")
-        print(f"{sei_correct} {sei_wrong_max}")
+            # print(f"#{n_enc} Ave. correct key rank = {ave_rank:.1f}, Ave. sei_r = {ave_sei_correct:.1f}, Ave. sei_w_max = {ave_sei_wrong_max:.1f}, "
+                    # f"Ave, sei_w_mu = {ave_sei_wrong_mu:.1f}, Ave. n_ineff = {ave_n_ineff:.1f}, n_rank_1 = {n_rank_1}")
+            print(f"{sei_correct} {sei_wrong_max} {n_ineffective}")
+            sei_correct_bytes.append(sei_correct)
+            sei_wrong_max_bytes.append(sei_wrong_max)
+            n_ineff_bytes.append(n_ineffective)
+            rank_bytes.append(rank)
 
+    n_steps = last // step
+    for i in range(n_steps):
+        for j in range(16):
+            #print(f'{sei_correct_bytes[j*n_steps + i]} {sei_wrong_max_bytes[j*n_steps + i]} ', end = '')
+            print(f'{rank_bytes[j*n_steps + i]} ', end = '')
+        print('')
+    for j in range(16):
+        print(f'n_ineff={n_ineff_bytes[j*n_steps + n_steps - 1]}  ', end = '')
 
 if __name__ == '__main__':
     if len(sys.argv) > 1:
         ANALYSIS_MODEL = sys.argv[1]
+    if "HW" in ANALYSIS_MODEL:
+        NORMALIZE = False
+        TARGET_BITS = None
     n_bits = int(ANALYSIS_MODEL[0])
     if not TARGET_BITS is None:
         assert n_bits == len(TARGET_BITS), "The number of model bits and target bits differ"
     power_two = 2**n_bits
     deg_freedom = power_two - 1
     s_W = math.sqrt(2*deg_freedom)
-    print(ANALYSIS_MODEL, ATTACK_LOCATION, TARGET_BITS)
+    print(ANALYSIS_MODEL, ATTACK_LOCATION, TARGET_BITS, NORMALIZE)
 
     real_device()
