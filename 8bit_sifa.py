@@ -189,7 +189,7 @@ def real_device():
     with open('./ctxt.pkl', 'rb') as f:
         ctxts = pickle.load(f)
 
-    f_path = r'/mnt/c/Users/sakamoto/Desktop/data_0626/ciphertext_random1_N=3000_Period=48_Round=9_Delay=10_220905_pprm1_50ns_10bit.pkl'
+    f_path = r'/mnt/c/Users/sakamoto/Desktop/data_0626/ciphertext_random1_N=3000_Period=50_Round=9_Delay=10_220905_pprm1_50ns_10bit.pkl'
     ctxts_fault = []
     with open(f_path, 'rb') as f:
         ctxts_fault = pickle.load(f)
@@ -217,7 +217,7 @@ def real_device():
                 C = (ctxts_t[i] >> (120 - target_byte*8)) & 0xff
                 Cp = ctxts_fault_t[i][target_byte]
 
-                if C == Cp:
+                if C != Cp:
                     # ineffective
                     list_ineffective.append(C)
             n_ineffective = len(list_ineffective)
@@ -257,8 +257,8 @@ def real_device():
     n_steps = last // step
     for i in range(n_steps):
         for j in range(16):
-            #print(f'{sei_correct_bytes[j*n_steps + i]} {sei_wrong_max_bytes[j*n_steps + i]} ', end = '')
-            print(f'{rank_bytes[j*n_steps + i]} ', end = '')
+            print(f'{sei_correct_bytes[j*n_steps + i]} {sei_wrong_max_bytes[j*n_steps + i]} ', end = '')
+            # print(f'{rank_bytes[j*n_steps + i]} ', end = '')
         print('')
     for j in range(16):
         print(f'n_ineff={n_ineff_bytes[j*n_steps + n_steps - 1]}  ', end = '')
@@ -266,14 +266,17 @@ def real_device():
 if __name__ == '__main__':
     if len(sys.argv) > 1:
         ANALYSIS_MODEL = sys.argv[1]
-    if "HW" in ANALYSIS_MODEL:
-        NORMALIZE = False
-        TARGET_BITS = None
     n_bits = int(ANALYSIS_MODEL[0])
+    power_two = 2**n_bits
+
+    if "HW" in ANALYSIS_MODEL:
+        TARGET_BITS = None
+        deg_freedom = n_bits + 1
+    else:
+        deg_freedom = power_two - 1
+
     if not TARGET_BITS is None:
         assert n_bits == len(TARGET_BITS), "The number of model bits and target bits differ"
-    power_two = 2**n_bits
-    deg_freedom = power_two - 1
     s_W = math.sqrt(2*deg_freedom)
     print(ANALYSIS_MODEL, ATTACK_LOCATION, TARGET_BITS, NORMALIZE)
 
