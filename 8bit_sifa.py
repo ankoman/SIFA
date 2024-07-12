@@ -8,7 +8,7 @@ dist_bin = [1, 8, 28, 56, 70, 56, 28, 8, 1]
 
 ANALYSIS_MODEL = "1bits" ### ['n'bits_HW or 'n'bits]
 ATTACK_LOCATION = "SB_in" ### ['SB_in' or "MC_in"]
-TARGET_BITS = None #(6,) ### A tuple of 0-7 or None
+TARGET_BITS = None #(0,) ### A tuple of 0-7 or None
 NORMALIZE = True
 
 n_ave_key = 64
@@ -26,7 +26,7 @@ def fault_injection(x, correct_key, fault_injected = 0):
         fault_byte = x
 
     if fault_injected:
-        fault_byte = (fault_byte & 0xfe) | (fault_byte & random.randint(0,0x1))
+        fault_byte = (fault_byte & 0xf0) | (fault_byte & random.randint(0,0xf))
         # fault_byte &= random.randint(0,0xff)
         # fault_byte &= 0x1
 
@@ -99,7 +99,7 @@ def get_SEI(key_hyp, list_ineffective, n_ineffective):
     # return sei
 
     ### Calc CHI
-    chi = 0
+    chi = -100
     if TARGET_BITS is None:
         for i in range(math.comb(8, n_bits)):
             t_chi = 0
@@ -181,7 +181,7 @@ def main():
         ave_n_ineff /= n_ave_key
         # print(f"#{n_enc} Ave. correct key rank = {ave_rank:.1f}, Ave. sei_r = {ave_sei_correct:.1f}, Ave. sei_w_max = {ave_sei_wrong_max:.1f}, "
                 # f"Ave, sei_w_mu = {ave_sei_wrong_mu:.1f}, Ave. n_ineff = {ave_n_ineff:.1f}, n_rank_1 = {n_rank_1}")
-        print(f"{ave_sei_correct} {ave_sei_wrong_max}")
+        print(f"{ave_sei_correct} {ave_sei_wrong_max} {ave_n_ineff}")
 
 def real_device():
 
@@ -189,7 +189,7 @@ def real_device():
     with open('./ctxt.pkl', 'rb') as f:
         ctxts = pickle.load(f)
 
-    f_path = r'/mnt/c/Users/sakamoto/Desktop/data_0626/ciphertext_random1_N=3000_Period=50_Round=9_Delay=10_220905_pprm1_50ns_10bit.pkl'
+    f_path = r'/mnt/c/Users/seedtyps/Desktop/PPRM1_R9/ciphertext_random1_N=3000_Period=53_Round=9_Delay=10_220905_pprm1_50ns_10bit.pkl'
     ctxts_fault = []
     with open(f_path, 'rb') as f:
         ctxts_fault = pickle.load(f)
@@ -217,7 +217,7 @@ def real_device():
                 C = (ctxts_t[i] >> (120 - target_byte*8)) & 0xff
                 Cp = ctxts_fault_t[i][target_byte]
 
-                if C != Cp:
+                if C == Cp:
                     # ineffective
                     list_ineffective.append(C)
             n_ineffective = len(list_ineffective)
@@ -271,7 +271,7 @@ if __name__ == '__main__':
 
     if "HW" in ANALYSIS_MODEL:
         TARGET_BITS = None
-        deg_freedom = n_bits + 1
+        deg_freedom = n_bits
     else:
         deg_freedom = power_two - 1
 
