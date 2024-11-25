@@ -52,7 +52,7 @@ def main(n_simulated_fault_bit, ANALYSIS_TYPE = "inef"):
     n_simulated_fault_bit: [REQUIRED] The number of bits to be fault-injected. [1, 8].
     ANALYSIS_TYPE: One of ["inef", "ef", "hybrid"]
     """
-    for n_enc in range(10, 510, 10):
+    for n_enc in range(100, 5100, 100):
         ave_rank = 0
         ave_sei_correct = 0
         ave_sei_wrong_min = 0
@@ -71,6 +71,10 @@ def main(n_simulated_fault_bit, ANALYSIS_TYPE = "inef"):
                 #print(f"{ptxt:x}")
                 Z = fault_injection(ptxt, correct_key, fault_injected = 0, n_simulated_fault_bit = n_simulated_fault_bit)
                 Zp = fault_injection(ptxt, correct_key, fault_injected = 1, n_simulated_fault_bit = n_simulated_fault_bit)
+                rand = random.randint(0, 1)
+                if rand != 0:
+                    ### 90% miss
+                    Zp = Z
                 if Z == Zp:
                     # Inneffective
                     list_freq_ineffective[ptxt] += 1

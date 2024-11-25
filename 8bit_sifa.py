@@ -9,9 +9,9 @@ dist_bin = [1, 8, 28, 56, 70, 56, 28, 8, 1]
 ANALYSIS_MODEL = "1bits" ### ['n'bits_HW or 'n'bits]
 ATTACK_LOCATION = "SB_in" ### ['SB_in' or "MC_in"]
 TARGET_BITS = None #(0,) ### A tuple of 0-7 or None
-NORMALIZE = True
+NORMALIZE = False
 
-n_ave_key = 64
+n_ave_key = 256
 
 def HW(x):
     return bin(x).count("1")
@@ -26,7 +26,8 @@ def fault_injection(x, correct_key, fault_injected = 0):
         fault_byte = x
 
     if fault_injected:
-        fault_byte = (fault_byte & 0xf0) | (fault_byte & random.randint(0,0xf))
+        n_simulated_fault_bit = 8
+        fault_byte = (fault_byte & (256 - 2**n_simulated_fault_bit)) | (fault_byte & random.randint(0,2**n_simulated_fault_bit - 1))
         # fault_byte &= random.randint(0,0xff)
         # fault_byte &= 0x1
 
@@ -121,7 +122,7 @@ def get_SEI(key_hyp, list_ineffective, n_ineffective):
 
 def main():
 
-    for n_enc in range(10, 510, 10):
+    for n_enc in range(100, 5100, 100):
         ave_rank = 0
         ave_sei_correct = 0
         ave_sei_wrong_max = 0
@@ -141,6 +142,10 @@ def main():
                 #print(f"{ptxt:x}")
                 C = fault_injection(int_state, correct_key, fault_injected = 0)
                 Cp = fault_injection(int_state, correct_key, fault_injected = 1)
+                rand = random.randint(0, 9)
+                if rand !=0:
+                    ### 90% miss
+                    Cp = C
                 if C == Cp:
                     # ineffective
                     list_ineffective.append(C)
@@ -189,7 +194,7 @@ def real_device():
     with open('./ctxt.pkl', 'rb') as f:
         ctxts = pickle.load(f)
 
-    f_path = r'/mnt/c/Users/seedtyps/Desktop/PPRM1_R9/ciphertext_random1_N=3000_Period=53_Round=9_Delay=10_220905_pprm1_50ns_10bit.pkl'
+    f_path = r'/mnt/c/Users/seedtyps/Desktop/PPRM1_R9/ciphertext_random1_N=3000_Period=5_Round=9_Delay=10_220905_pprm1_50ns_10bit.pkl'
     ctxts_fault = []
     with open(f_path, 'rb') as f:
         ctxts_fault = pickle.load(f)
@@ -280,4 +285,4 @@ if __name__ == '__main__':
     s_W = math.sqrt(2*deg_freedom)
     print(ANALYSIS_MODEL, ATTACK_LOCATION, TARGET_BITS, NORMALIZE)
 
-    real_device()
+    main()
