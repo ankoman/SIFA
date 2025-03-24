@@ -1,5 +1,5 @@
 from aes import Sbox
-from tqdm import tqdm
+import csv
 import random, math, itertools, pickle, sys
 from scipy import stats
 from fire import Fire
@@ -58,7 +58,8 @@ def main(alpha_act, beta_act, alpha_hyp, beta_hyp, ANALYSIS_TYPE = "inef", ):
     ANALYSIS_TYPE: One of ["inef", "ef", "hybrid"] (Default: inef)
     """
 
-    for n_enc in range(10, 5100, 10):
+    list_res = []
+    for n_enc in range(510, 1000, 10):
         ave_rank = 0
         ave_sei_correct = 0
         ave_sei_wrong_min = 0
@@ -134,6 +135,13 @@ def main(alpha_act, beta_act, alpha_hyp, beta_hyp, ANALYSIS_TYPE = "inef", ):
                 # f"Ave, sei_w_mu = {ave_sei_wrong_mu:.1f}, Ave. n_ineff = {ave_n_ineff_ef:.1f}, n_rank_1 = {n_rank_1}")
         print(f"{ave_sei_correct} {ave_sei_wrong_min} {ave_n_ineff_ef}")
 
+        attacked = ave_sei_correct < ave_sei_wrong_min
+        list_res.append([n_enc, ave_sei_correct, ave_sei_wrong_min, ave_n_ineff_ef, ave_rank, attacked])
 
+
+    with open(f"res/a_act{alpha_act}-b_act{beta_act}-a_hyp{alpha_hyp}-b_hyp{beta_hyp}.csv", 'w', encoding='utf-8')as f:
+        writer = csv.writer(f,lineterminator='\n')
+        writer.writerows(list_res)
+ 
 if __name__ == '__main__':
     Fire(main)
