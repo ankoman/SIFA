@@ -6,24 +6,26 @@ from fire import Fire
 
 random.seed(20)
 
-alpha = 1
-beta = 0.5
 n_ave_key = 256
 
 def HW(x):
     return bin(x).count("1")
 
-def fault_injection(x, correct_key, fault_injected = 0, n_simulated_fault_bit = 0):
+def fault_injection(x, correct_key, alpha, beta):
     fault_byte = x ^ correct_key
     fault_byte = Sbox[fault_byte]
 
-    if fault_injected:
-        fault_byte = (fault_byte & (256 - 2**n_simulated_fault_bit)) | (fault_byte & random.randint(0,2**n_simulated_fault_bit - 1))
-        # fault_byte &= 0x1
+    h = HW(fault_byte)
+    inef_rate = (alpha**(8-h))*(beta**h)
+    r = random.random()
 
-    return fault_byte
+    is_inef = False
+    if r < inef_rate:
+        is_inef = True
 
-def get_Score(ANALYSIS_TYPE, key_hyp, list_inef_ef, n_inef_ef):
+    return is_inef
+
+def get_Score(ANALYSIS_TYPE, key_hyp, list_inef_ef, n_inef_ef, alpha, beta):
         
     p_em = [0] * 256
     p_model = [0] * 256
@@ -32,9 +34,9 @@ def get_Score(ANALYSIS_TYPE, key_hyp, list_inef_ef, n_inef_ef):
         Z = Sbox[x ^ key_hyp]
         h = HW(Z)
         if ANALYSIS_TYPE == 'inef':
-            p_model[x] = (alpha**(1-h))*(beta**h)
+            p_model[x] = (alpha**(8-h))*(beta**h)
         elif ANALYSIS_TYPE == 'ef':
-            p_model[x] = 1 - ((alpha**(1-h))*(beta**h))
+            p_model[x] = 1 - ((alpha**(8-h))*(beta**h))
 
     KL = stats.entropy(p_em, p_model)
     return KL
@@ -46,13 +48,17 @@ def get_Score(ANALYSIS_TYPE, key_hyp, list_inef_ef, n_inef_ef):
 
     # return sei
 
-def main(n_simulated_fault_bit, ANALYSIS_TYPE = "inef"):
+def main(alpha_act, beta_act, alpha_hyp, beta_hyp, ANALYSIS_TYPE = "inef", ):
     """
     Args:
-    n_simulated_fault_bit: [REQUIRED] The number of bits to be fault-injected. [1, 8].
-    ANALYSIS_TYPE: One of ["inef", "ef", "hybrid"]
+    alpha_act: Actual fault parameter alpha
+    beta_act:  Actual fault parameter beta
+    alpha_hyp: Hypothesised alpha to be used for analysis 
+    beta_hyp:  Hypothesised beta to be used for analysis 
+    ANALYSIS_TYPE: One of ["inef", "ef", "hybrid"] (Default: inef)
     """
-    for n_enc in range(100, 5100, 100):
+
+    for n_enc in range(10, 5100, 10):
         ave_rank = 0
         ave_sei_correct = 0
         ave_sei_wrong_min = 0
@@ -69,13 +75,14 @@ def main(n_simulated_fault_bit, ANALYSIS_TYPE = "inef"):
             for i in range(n_enc):
                 ptxt = random.randint(0, 256 - 1)
                 #print(f"{ptxt:x}")
-                Z = fault_injection(ptxt, correct_key, fault_injected = 0, n_simulated_fault_bit = n_simulated_fault_bit)
-                Zp = fault_injection(ptxt, correct_key, fault_injected = 1, n_simulated_fault_bit = n_simulated_fault_bit)
-                rand = random.randint(0, 1)
-                if rand != 0:
-                    ### 90% miss
-                    Zp = Z
-                if Z == Zp:
+                is_inef = fault_injection(ptxt, correct_key, alpha_act, beta_act)
+
+                # rand = random.randint(0, 1)
+                # if rand != 0:
+                #     ### 90% miss
+                #     Zp = Z
+
+                if is_inef:
                     # Inneffective
                     list_freq_ineffective[ptxt] += 1
                     n_ineffective += 1
@@ -94,7 +101,7 @@ def main(n_simulated_fault_bit, ANALYSIS_TYPE = "inef"):
             sei_correct, sei_wrong_min, sei_wrong_mu = 0, 0, 0
             if n_inef_ef > 0:
                 for key_hyp in range(256):
-                    dict_SEI[hex(key_hyp)] = get_Score(ANALYSIS_TYPE, key_hyp, list_inef_ef, n_inef_ef)
+                    dict_SEI[hex(key_hyp)] = get_Score(ANALYSIS_TYPE, key_hyp, list_inef_ef, n_inef_ef, alpha_hyp, beta_hyp)
                 SEI_sorted = sorted(dict_SEI.items(), key=lambda x:x[1])
                 # print(f'Top 10 SEIs: {SEI_sorted[:9]}')
 
