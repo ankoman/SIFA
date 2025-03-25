@@ -3,6 +3,7 @@ import csv
 import random, math, itertools, pickle, sys
 from scipy import stats
 from fire import Fire
+import numpy as np
 
 random.seed(20)
 
@@ -27,16 +28,31 @@ def fault_injection(x, correct_key, alpha, beta):
 
 def get_Score(ANALYSIS_TYPE, key_hyp, list_inef_ef, n_inef_ef, alpha, beta):
         
-    p_em = [0] * 256
-    p_model = [0] * 256
+    p_em = []
+    p_model = []
     for x in range(256):
-        p_em[x] = list_inef_ef[x] / n_inef_ef
         Z = Sbox[x ^ key_hyp]
         h = HW(Z)
-        if ANALYSIS_TYPE == 'inef':
-            p_model[x] = (alpha**(8-h))*(beta**h)
-        elif ANALYSIS_TYPE == 'ef':
-            p_model[x] = 1 - ((alpha**(8-h))*(beta**h))
+
+        if ANALYSIS_TYPE == 'ef':
+            p_model.append(1 - ((alpha**(8-h))*(beta**h)))
+        else:
+            p_model.append((alpha**(8-h))*(beta**h))
+
+        ### Naive p_em calculation. Be 0 when no inef occurs
+        p_em.append(list_inef_ef[x] / n_inef_ef[x] if n_inef_ef[x] != 0 else p_model[-1])
+
+        ### p_em calculation with no probability assignment when no inef occurs
+        # if list_inef_ef[x] != 0:
+        #     p_em.append(list_inef_ef[x] / n_inef_ef)
+        # else:
+        #     p_model.pop()
+
+        # ## p_em calculation with model probability assignment when no inef occurs
+        # if list_inef_ef[x] != 0:
+        #     p_em.append(list_inef_ef[x] / n_inef_ef)
+        # else:
+        #     p_em.append(p_model[-1])
 
     KL = stats.entropy(p_em, p_model)
     return KL
@@ -55,11 +71,11 @@ def main(alpha_act, beta_act, alpha_hyp, beta_hyp, ANALYSIS_TYPE = "inef", ):
     beta_act:  Actual fault parameter beta
     alpha_hyp: Hypothesised alpha to be used for analysis 
     beta_hyp:  Hypothesised beta to be used for analysis 
-    ANALYSIS_TYPE: One of ["inef", "ef", "hybrid"] (Default: inef)
+    ANALYSIS_TYPE: One of ["inef", "ef", "inef_all_x"] (Default: inef)
     """
 
     list_res = []
-    for n_enc in range(510, 1000, 10):
+    for n_enc in [250, 260, 50, 60, 70, 80, 90, 100, 200, 300, 400, 500, 1000, 2000, 3000, 4000, 5000, 10000, 20000, 30000, 40000, 50000, 100000]: #range(10, 510, 10):
         ave_rank = 0
         ave_sei_correct = 0
         ave_sei_wrong_min = 0
@@ -69,8 +85,8 @@ def main(alpha_act, beta_act, alpha_hyp, beta_hyp, ANALYSIS_TYPE = "inef", ):
         for correct_key in range(n_ave_key):
             #print(f"\nCorrect key: {correct_key:x}")
             n_ineffective = 0
-            list_freq_ineffective = [0] * 256
-            list_freq_effective = [0] * 256
+            list_freq_ineffective = np.array([0] * 256)
+            list_freq_effective = np.array([0] * 256)
             dict_SEI = {}
 
             for i in range(n_enc):
@@ -94,15 +110,21 @@ def main(alpha_act, beta_act, alpha_hyp, beta_hyp, ANALYSIS_TYPE = "inef", ):
 
             if ANALYSIS_TYPE == 'inef':
                 n_inef_ef = n_ineffective
+                list_n_inef_ef = [n_ineffective] * 256
                 list_inef_ef = list_freq_ineffective
             elif ANALYSIS_TYPE == 'ef':
                 n_inef_ef = n_enc - n_ineffective
+                list_n_inef_ef = [n_enc - n_ineffective] * 256
                 list_inef_ef = list_freq_effective
+            elif ANALYSIS_TYPE == 'inef_all_x':
+                n_inef_ef = n_ineffective
+                list_n_inef_ef = list_freq_ineffective + list_freq_effective
+                list_inef_ef = list_freq_ineffective
 
             sei_correct, sei_wrong_min, sei_wrong_mu = 0, 0, 0
             if n_inef_ef > 0:
                 for key_hyp in range(256):
-                    dict_SEI[hex(key_hyp)] = get_Score(ANALYSIS_TYPE, key_hyp, list_inef_ef, n_inef_ef, alpha_hyp, beta_hyp)
+                    dict_SEI[hex(key_hyp)] = get_Score(ANALYSIS_TYPE, key_hyp, list_inef_ef, list_n_inef_ef, alpha_hyp, beta_hyp)
                 SEI_sorted = sorted(dict_SEI.items(), key=lambda x:x[1])
                 # print(f'Top 10 SEIs: {SEI_sorted[:9]}')
 
@@ -139,7 +161,7 @@ def main(alpha_act, beta_act, alpha_hyp, beta_hyp, ANALYSIS_TYPE = "inef", ):
         list_res.append([n_enc, ave_sei_correct, ave_sei_wrong_min, ave_n_ineff_ef, ave_rank, attacked])
 
 
-    with open(f"res/a_act{alpha_act}-b_act{beta_act}-a_hyp{alpha_hyp}-b_hyp{beta_hyp}.csv", 'w', encoding='utf-8')as f:
+    with open(f"res/{ANALYSIS_TYPE}-a_act{alpha_act}-b_act{beta_act}-a_hyp{alpha_hyp}-b_hyp{beta_hyp}.csv", 'w', encoding='utf-8')as f:
         writer = csv.writer(f,lineterminator='\n')
         writer.writerows(list_res)
  
