@@ -57,12 +57,22 @@ def get_Score(ANALYSIS_TYPE, key_hyp, list_inef_ef, n_inef_ef, alpha, beta):
     KL = stats.entropy(p_em, p_model)
     return KL
 
-    ### Calc SEI
-    # sei = 0
-    # for i in range(256):
-    #     sei += (p_em_inef[i]/ - p_model[i])**2
+def get_Score_HW(ANALYSIS_TYPE, key_hyp, list_inef_ef, n_inef_ef, alpha, beta):
+        
+    p_em = [0] * 9
+    p_model = [1/256, 8/256, 28/256, 56/256, 70/256, 56/256, 28/256, 8/256, 1/256]
+    for x in range(256):
+        Z = Sbox[x ^ key_hyp]
+        h = HW(Z)
+        p_em[h] += list_inef_ef[x]
 
-    # return sei
+    ## Calc SEI
+    sei = 0
+    n_ineffective = sum(list_inef_ef)
+    for i in range(9):
+        sei += (p_em[i]/n_ineffective - p_model[i])**2
+
+    return -sei
 
 def main(alpha_act, beta_act, alpha_hyp, beta_hyp, ANALYSIS_TYPE = "inef", ):
     """
@@ -71,11 +81,18 @@ def main(alpha_act, beta_act, alpha_hyp, beta_hyp, ANALYSIS_TYPE = "inef", ):
     beta_act:  Actual fault parameter beta
     alpha_hyp: Hypothesised alpha to be used for analysis 
     beta_hyp:  Hypothesised beta to be used for analysis 
-    ANALYSIS_TYPE: One of ["inef", "ef", "inef_all_x"] (Default: inef)
+    ANALYSIS_TYPE: One of ["inef", "ef", "inef_all_x"] + ['_HW'] (Default: inef)
     """
 
-    list_res = []
-    for n_enc in [250, 260, 50, 60, 70, 80, 90, 100, 200, 300, 400, 500, 1000, 2000, 3000, 4000, 5000, 10000, 20000, 30000, 40000, 50000, 100000]: #range(10, 510, 10):
+    filename = f"res/{ANALYSIS_TYPE}-a_act{alpha_act}-b_act{beta_act}-a_hyp{alpha_hyp}-b_hyp{beta_hyp}.csv"
+
+    Score = get_Score
+    if "HW" in ANALYSIS_TYPE:
+        ANALYSIS_TYPE = ANALYSIS_TYPE[:-3]
+        Score = get_Score_HW
+
+    list_res = [['n_enc', 'ave_score_correct', 'ave_score_wrong_min', 'ave_n_ineff_ef', 'ave_rank', 'attacked']]
+    for n_enc in [50, 60, 70, 80, 90, 100, 200, 300, 400, 500, 1000, 2000, 3000, 4000, 5000, 10000, 20000, 30000, 40000, 50000, 100000]: #range(10, 510, 10):
         ave_rank = 0
         ave_sei_correct = 0
         ave_sei_wrong_min = 0
@@ -122,9 +139,10 @@ def main(alpha_act, beta_act, alpha_hyp, beta_hyp, ANALYSIS_TYPE = "inef", ):
                 list_inef_ef = list_freq_ineffective
 
             sei_correct, sei_wrong_min, sei_wrong_mu = 0, 0, 0
+
             if n_inef_ef > 0:
                 for key_hyp in range(256):
-                    dict_SEI[hex(key_hyp)] = get_Score(ANALYSIS_TYPE, key_hyp, list_inef_ef, list_n_inef_ef, alpha_hyp, beta_hyp)
+                    dict_SEI[hex(key_hyp)] = Score(ANALYSIS_TYPE, key_hyp, list_inef_ef, list_n_inef_ef, alpha_hyp, beta_hyp)
                 SEI_sorted = sorted(dict_SEI.items(), key=lambda x:x[1])
                 # print(f'Top 10 SEIs: {SEI_sorted[:9]}')
 
@@ -153,15 +171,16 @@ def main(alpha_act, beta_act, alpha_hyp, beta_hyp, ANALYSIS_TYPE = "inef", ):
         ave_sei_wrong_min /= n_ave_key
         ave_sei_wrong_mu /= n_ave_key
         ave_n_ineff_ef /= n_ave_key
+        attacked = ave_sei_correct < ave_sei_wrong_min
+
         # print(f"#{n_enc} Ave. correct key rank = {ave_rank:.1f}, Ave. sei_r = {ave_sei_correct:.1f}, Ave. sei_w_max = {ave_sei_wrong_min:.1f}, "
                 # f"Ave, sei_w_mu = {ave_sei_wrong_mu:.1f}, Ave. n_ineff = {ave_n_ineff_ef:.1f}, n_rank_1 = {n_rank_1}")
-        print(f"{ave_sei_correct} {ave_sei_wrong_min} {ave_n_ineff_ef}")
+        print(f"{ave_sei_correct} {ave_sei_wrong_min} {ave_n_ineff_ef} {ave_rank} {attacked}")
 
-        attacked = ave_sei_correct < ave_sei_wrong_min
         list_res.append([n_enc, ave_sei_correct, ave_sei_wrong_min, ave_n_ineff_ef, ave_rank, attacked])
 
 
-    with open(f"res/{ANALYSIS_TYPE}-a_act{alpha_act}-b_act{beta_act}-a_hyp{alpha_hyp}-b_hyp{beta_hyp}.csv", 'w', encoding='utf-8')as f:
+    with open(filename, 'w', encoding='utf-8') as f:
         writer = csv.writer(f,lineterminator='\n')
         writer.writerows(list_res)
  
