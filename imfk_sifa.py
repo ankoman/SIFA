@@ -92,7 +92,7 @@ def main(alpha_act, beta_act, alpha_hyp, beta_hyp, ANALYSIS_TYPE = "inef", ):
         Score = get_Score_HW
 
     list_res = [['n_enc', 'ave_score_correct', 'ave_score_wrong_min', 'ave_n_ineff_ef', 'ave_rank', 'attacked']]
-    for n_enc in [50, 60, 70, 80, 90, 100, 200, 300, 400, 500, 1000, 2000, 3000, 4000, 5000, 10000, 20000, 30000, 40000, 50000, 100000]: #range(10, 510, 10):
+    for n_enc in [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000, 90000, 100000]: #range(10, 510, 10):
         ave_rank = 0
         ave_sei_correct = 0
         ave_sei_wrong_min = 0
