@@ -66,13 +66,20 @@ def get_Score_HW(ANALYSIS_TYPE, key_hyp, list_inef_ef, n_inef_ef, alpha, beta):
         h = HW(Z)
         p_em[h] += list_inef_ef[x]
 
-    ## Calc SEI
-    sei = 0
     n_ineffective = sum(list_inef_ef)
+
+    ### Calc SEI
+    sei = 0
     for i in range(9):
         sei += (p_em[i]/n_ineffective - p_model[i])**2
 
     return -sei
+
+    ### Calc KL
+    # p_em = p_em/n_ineffective
+    # KL = -stats.entropy(p_em, p_model)
+    # return KL
+
 
 def main(alpha_act, beta_act, alpha_hyp, beta_hyp, ANALYSIS_TYPE = "inef", ):
     """
